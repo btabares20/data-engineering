@@ -61,14 +61,14 @@ while True:
             continue
         first_link = title_td.find('a')
         
-        job = {
+        job = { 
             "job_title_text": first_link.text.strip() if first_link else None,
             "job_url": first_link['href'] if first_link else None,
             "company": title_td.find('div', class_=None).text.replace('at ', '').strip() if title_td.find('div', class_=None) else None,
         }
         
         all_jobs.append(job)
-
+    # FIXME: This is redundant
     job_links= []
     for job in all_jobs:
         job_url: str = job.get('job_url')
