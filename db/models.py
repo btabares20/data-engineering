@@ -1,7 +1,7 @@
 import uuid
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy import Column, String, DateTime, func
-from engine import Base, SessionLocal, engine
+from db.engine import Base, SessionLocal, engine
 
 class Staging(Base):
     __tablename__ = "staging"

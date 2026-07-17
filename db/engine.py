@@ -1,5 +1,5 @@
 from sqlalchemy import create_engine
-from config import POSTGRES_URL
+from db.config import POSTGRES_URL
 from sqlalchemy.orm import sessionmaker, declarative_base
 
 Base = declarative_base()
