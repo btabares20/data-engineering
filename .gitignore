@@ -1,3 +1,4 @@
 parsed.json
 staging.db
 raw_data/
+__pycache__/
