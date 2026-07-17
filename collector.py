@@ -82,7 +82,7 @@ def main():
                 if not job_url.startswith("/jobs"):
                     details_url_base += "/jobtools/"
                 job_links.append(details_url_base + job_url)
-
+            found_new_job = False
             for idx, job in enumerate(job_links):
                 job_deets = requests.get(job)
                 details_parser= BeautifulSoup(job_deets.text, 'html.parser')
@@ -100,6 +100,18 @@ def main():
                         f"{all_jobs[idx]['job_title_text']}"
                     )
                     continue
+
+                exists = db.query(Raw).filter(
+                    Raw.source == SOURCE_NAME,
+                    Raw.external_reference_id == job_reference
+                ).first()
+
+                if exists:
+                    logging.info(f"Already exists: {job_reference}")
+                    continue
+                else:
+                    found_new_job = True
+                    logging.info(f"Job not yet on db: {job_reference}")
 
                 raw_data = {
                     "external_reference_id": job_reference,
@@ -124,6 +136,10 @@ def main():
                 )
 
             db.commit()
+            
+            if not found_new_job:
+                logging.info("Page contained no new jobs. Stopping collector.")
+                break
 
 
 if __name__ == "__main__":
