@@ -4,6 +4,7 @@ from engine import get_db
 from models import Staging
 from pathlib import Path
 from contextlib import contextmanager
+from sqlalchemy import func
 from sqlalchemy.dialects.postgresql import insert
 
 db_context = contextmanager(get_db)
@@ -22,9 +23,12 @@ def main():
                 stmt = stmt.on_conflict_do_update(
                     index_elements=["external_reference_id"],
                     set_={
-                        c.name: stmt.excluded[c.name]
-                        for c in Staging.__table__.columns
-                        if c.name != "id"
+                        **{
+                            c.name: stmt.excluded[c.name]
+                            for c in Staging.__table__.columns
+                            if c.name not in {"id", "created_at", "updated_at"}
+                            },
+                        "updated_at": func.now(),
                     },
                 )
                 db.execute(stmt)
