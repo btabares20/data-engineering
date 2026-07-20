@@ -1,4 +1,7 @@
 *_parsed.json
+airflow.cfg
+*.log
+*log
 staging.db
 raw_data/
 __pycache__/
