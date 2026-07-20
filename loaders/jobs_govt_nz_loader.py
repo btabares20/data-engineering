@@ -6,7 +6,8 @@ from pathlib import Path
 from sqlalchemy import func
 from sqlalchemy.dialects.postgresql import insert
 
-parsed_file = Path(__file__).resolve().parents[1] / "parsed.json"
+parsed_file = "jobs_govt_nz_parsed.json"
+parsed_file = Path(__file__).resolve().parents[1] / parsed_file 
 def main():
     with db_context() as db:
         with open(parsed_file, 'r') as file:

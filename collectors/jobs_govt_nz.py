@@ -36,6 +36,7 @@ BODY = {
     "in_pg": "0",
 }
 def main():
+    print("starting jobs govt nz scraper")
     page = "0"
     next_page = 1
     total_jobs = 0
@@ -116,7 +117,9 @@ def main():
                 raw_data = {
                     "external_reference_id": job_reference,
                     "source": SOURCE_NAME,
-                    "raw_html": details_parser.prettify(),
+                    "raw": details_parser.prettify(),
+                    "job_url": all_jobs[idx]['job_url'],
+                    "job_title": all_jobs[idx]['job_title_text']
                 }
 
                 stmt = insert(Raw).values(**raw_data)
@@ -131,8 +134,7 @@ def main():
                 db.execute(stmt)
 
                 logging.info(
-                    f"Saved raw job {job_reference} - "
-                    f"{all_jobs[idx]['job_title_text']}"
+                    f"Saved job {all_jobs[idx]['job_title_text']} #{job_reference} in raw"
                 )
 
             db.commit()
@@ -140,6 +142,7 @@ def main():
             if not found_new_job:
                 logging.info("Page contained no new jobs. Stopping collector.")
                 break
+
 
 
 if __name__ == "__main__":

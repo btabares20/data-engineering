@@ -8,7 +8,7 @@ from sqlalchemy import UUID, func, select
 
 from sqlalchemy.dialects.postgresql import insert
 from db.engine import db_context
-from db.mappings import EMPLOYMENT_KEYWORDS, WORK_SCHEDULE_KEYWORDS, EmploymentType, WorkSchedule
+from db.mappings import EMPLOYMENT_KEYWORDS, WORK_SCHEDULE_KEYWORDS, EmploymentType, WorkSchedule, CURRENCY, SALARY_UNIT_PATTERNS, NUMBER_PATTERN
 from db.models import Raw, Staging, JobPosting
 from db.types import StagingRaw, QualityMetrics
 
@@ -18,7 +18,6 @@ from dateutil.parser import parse
 from urllib.parse import urlparse
 
 ALPHA = r'[^a-zA-Z0-9]'
-CURRENCY=r"^[^\d-]+"
 
 def is_valid_url(url: str | None) -> bool:
     if not url:
@@ -48,7 +47,11 @@ def clean_string(value: str | None) -> str | None:
     return value
 
 def normalize_salary_number(value: str) -> str:
-    value = value.strip()
+    value = value.strip().upper()
+    # Handle K suffix
+    if value.endswith("K"):
+        return str(float(value[:-1].replace(",", "")) * 1000)
+
     # Edge case: 75.000.00 -> 75000.00
     if re.fullmatch(r"\d{1,3}(?:\.\d{3})+\.\d+", value):
         parts = value.split(".")
@@ -57,22 +60,39 @@ def normalize_salary_number(value: str) -> str:
     value = value.replace(",", "")
 
     return value
+def split_salary_range(
+    salary_range: str | None,
+) -> tuple[float | None, float |None, str | None]:
+    if not salary_range:
+        return None, None, None
 
-def split_salary_range(salary_range: str | None):
-    salary_min, salary_max = None, None
-    if salary_range is None:
-        return salary_min, salary_max
+    text = salary_range.strip()
 
-    salary_split = salary_range.strip().split("-")
-    if len(salary_split) == 2:
-        # remove currency, will always be NZD for now
-        if salary_split[0]:
-            salary_min = re.sub(CURRENCY,'',salary_split[0].strip())
-            salary_min = float(normalize_salary_number(salary_min))
-        if salary_split[1]:
-            salary_max = re.sub(CURRENCY,'',salary_split[1].strip())
-            salary_max = float(salary_max.replace(",",""))
-    return salary_min, salary_max
+    salary_unit = None
+    for unit, pattern in SALARY_UNIT_PATTERNS.items():
+        if pattern.search(text):
+            salary_unit = unit
+            break
+
+    numbers = NUMBER_PATTERN.findall(re.sub(CURRENCY, "", text))
+
+    if not numbers:
+        return None, None, salary_unit
+
+    parsed = [float(normalize_salary_number(n)) for n in numbers]
+
+    salary_min = parsed[0]
+    salary_max = parsed[1] if len(parsed) > 1 else parsed[0]
+
+    # Legacy heuristic: large salaries without an explicit unit
+    if (
+        salary_unit is None
+        and salary_min >= 40_000
+        and salary_max >= 40_000
+    ):
+        salary_unit = "year"
+
+    return salary_min, salary_max, salary_unit
 
 def normalize_position_type(position_type: str | None):
     if position_type is None:
@@ -94,7 +114,7 @@ def normalize_position_type(position_type: str | None):
 
 
 def transform_data(data: StagingRaw):
-    salary_min, salary_max = split_salary_range(data.get("salary_range"))
+    salary_min, salary_max, salary_unit = split_salary_range(data.get("salary_range"))
     employment_type, work_schedule = normalize_position_type(data.get("position_type"))
     return JobPosting(
         source=data["source"],
@@ -108,10 +128,12 @@ def transform_data(data: StagingRaw):
         date_listed=data["date_listed"],
         salary_min=salary_min,
         salary_max=salary_max,
+        salary_unit=salary_unit,
         closing_date=data["closing_date"],
         attachment_url=data["attachment"],
         file_links=data["file_links"],
-        website=data["website"]
+        website=data["website"],
+        job_url=data["job_url"]
     )
 
     
