@@ -3,6 +3,7 @@ import math
 import random
 import re
 import time
+import sys
 from datetime import datetime
 from pathlib import Path
 
@@ -98,7 +99,8 @@ def long_sleep():
     time.sleep(seconds)
 
 
-def main():
+def main(region: str = "wellington"):
+    HEADERS["canonical_path"]= f"/jobs/{region}"
     print("starting trade_me scraper")
     try:
         page = get_resume_page()

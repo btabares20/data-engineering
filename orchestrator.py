@@ -13,7 +13,10 @@ async def main():
     print("Starting scrapers...")
     await asyncio.gather(
         asyncio.to_thread(jobs_govt_nz_collector),
-        asyncio.to_thread(trade_me_collector),
+        asyncio.to_thread(trade_me_collector, "wellington"),
+    )
+    await asyncio.gather(
+        asyncio.to_thread(trade_me_collector, "auckland")
     )
 
     print("Starting parsers...")
