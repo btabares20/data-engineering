@@ -60,12 +60,12 @@ def get_category_name(raw_category: str, categories: dict)-> str | None:
     )
     return category_name
 
-def get_resume_page() -> int:
+def get_resume_page(region) -> int:
     today = datetime.now().strftime("%Y%m%d")
 
     # Already finished today?
     end_files = sorted(
-        OUTPUT_DIR.glob(f"trademe_jobs_page_*_{today}_*_END.json")
+        OUTPUT_DIR.glob(f"trademe_jobs_page_{region}_*_{today}_*_END.json")
     )
 
     if end_files:
@@ -74,12 +74,12 @@ def get_resume_page() -> int:
         )
 
     pattern = re.compile(
-        rf"trademe_jobs_page_(\d+)_{today}_\d{{6}}\.json"
+        rf"trademe_jobs_page_{region}_(\d+)_{today}_\d{{6}}\.json"
     )
 
     latest_page = 0
 
-    for file in OUTPUT_DIR.glob("trademe_jobs_page_*.json"):
+    for file in OUTPUT_DIR.glob(f"trademe_jobs_page_{region}_*.json"):
         match = pattern.match(file.name)
         if match:
             latest_page = max(latest_page, int(match.group(1)))
@@ -103,7 +103,7 @@ def main(region: str = "wellington"):
     HEADERS["canonical_path"]= f"/jobs/{region}"
     print("starting trade_me scraper")
     try:
-        page = get_resume_page()
+        page = get_resume_page(region)
     except RuntimeError as e:
         print(str(e))
         return
@@ -146,7 +146,7 @@ def main(region: str = "wellington"):
                     return
 
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = OUTPUT_DIR / f"trademe_jobs_page_{page}_{timestamp}.json"
+            filename = OUTPUT_DIR / f"trademe_jobs_page_{region}_{page}_{timestamp}.json"
 
             with filename.open("w", encoding="utf-8") as f:
                 json.dump(data, f, ensure_ascii=False, indent=2)
