@@ -21,7 +21,7 @@ HEADERS = {
     "Accept-Language": "en-US,en;q=0.9",
     "Referer": "https://www.trademe.co.nz/",
     "Origin": "https://www.trademe.co.nz",
-    "x-trademe-uniqueclientid": "ee00f612-def4-4097-b37f-b1cc12a7c7da",
+    "x-trademe-uniqueclientid": "2c72ffa4-eb63-40cf-8f1c-294ffbac6e6a",
     "DNT": "1",
     "Sec-GPC": "1",
     "Cache-Control": "no-cache",
@@ -36,7 +36,7 @@ BASE_PARAMS = {
     "return_empty_categories": "true",
     "return_super_features": "true",
     "return_did_you_mean": "true",
-    "canonical_path": "/jobs/wellington",
+    "canonical_path": "/jobs/auckland",
     "snap_parameters": "true",
     "photo_size": 6,
     "return_seo_details": "true",
@@ -117,7 +117,9 @@ def main():
     last_page = None
     
     with db_context() as db:
+        page_since_last_new_job = 0
         while last_page is None or page <= last_page:
+            found_new_job = 0
             print(f"Fetching page {page}...")
 
             params = BASE_PARAMS | {
@@ -166,7 +168,7 @@ def main():
                     print(f"Already exists: {external_reference_id}")
                     continue
                 else:
-                    found_new_job = True
+                    found_new_job += 1
                     print(f"Job not yet on db: {external_reference_id}")
 
                 raw_data = {
@@ -192,6 +194,12 @@ def main():
                     f"Saved job {title} #{external_reference_id} in raw"
                 )
             db.commit()
+            if found_new_job == 0:
+                page_since_last_new_job+=1
+            
+            if page_since_last_new_job == 2:
+                print(f"Stopping trademe collector ... no new jobs found since the last {page_since_last_new_job} page")
+                break
 
             if page == last_page:
                 end_filename = filename.with_name(
