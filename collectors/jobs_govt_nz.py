@@ -5,6 +5,8 @@ from db.engine import db_context
 from db.models import Raw
 from sqlalchemy.dialects.postgresql import insert
 
+from utils.common import pipeline_step
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
@@ -13,6 +15,7 @@ logging.basicConfig(
 
 BASE_URL = "https://jobs.govt.nz"
 SOURCE_NAME = 'jobs_govt_nz'
+step_name = f"scraper:{SOURCE_NAME}"
 DATA_DIR = f"./raw_data/{SOURCE_NAME}"
 
 HEADERS = {
@@ -35,7 +38,8 @@ BODY = {
     "in_searchBut": "",
     "in_pg": "0",
 }
-def main():
+@pipeline_step(step_name)
+def main(run_id, metrics):
     print("starting jobs govt nz scraper")
     page = "0"
     next_page = 1
@@ -78,6 +82,7 @@ def main():
             # FIXME: This is redundant
             job_links= []
             for job in all_jobs:
+                metrics.rows_in += 1
                 job_url: str = job.get('job_url')
                 details_url_base = BASE_URL
                 if not job_url.startswith("/jobs"):
@@ -85,65 +90,69 @@ def main():
                 job_links.append(details_url_base + job_url)
             found_new_job = False
             for idx, job in enumerate(job_links):
-                job_deets = requests.get(job)
-                details_parser= BeautifulSoup(job_deets.text, 'html.parser')
-                details_table = details_parser.select_one("div[class^='job-details']")
-                job_reference = None
-                if details_table:
-                    for row in details_table.find_all('tr'):
-                        if "Reference" in row.find_all('td')[0].get_text(strip=True):
-                            job_reference = row.find_all('td')[1].get_text(strip=True)
-                            break
+                try:
+                    job_deets = requests.get(job)
+                    details_parser= BeautifulSoup(job_deets.text, 'html.parser')
+                    details_table = details_parser.select_one("div[class^='job-details']")
+                    job_reference = None
+                    if details_table:
+                        for row in details_table.find_all('tr'):
+                            if "Reference" in row.find_all('td')[0].get_text(strip=True):
+                                job_reference = row.find_all('td')[1].get_text(strip=True)
+                                break
 
-                if not job_reference:
-                    logging.warning(
-                        f"Skipping job without reference: "
-                        f"{all_jobs[idx]['job_title_text']}"
+                    if not job_reference:
+                        logging.warning(
+                            f"Skipping job without reference: "
+                            f"{all_jobs[idx]['job_title_text']}"
+                        )
+                        metrics.rows_skipped += 1
+                        continue
+
+                    exists = db.query(Raw).filter(
+                        Raw.source == SOURCE_NAME,
+                        Raw.external_reference_id == job_reference
+                    ).first()
+
+                    if exists:
+                        logging.info(f"Already exists: {job_reference}")
+                        metrics.rows_skipped += 1
+                        continue
+                    else:
+                        found_new_job = True
+                        logging.info(f"Job not yet on db: {job_reference}")
+
+                    raw_data = {
+                        "external_reference_id": job_reference,
+                        "source": SOURCE_NAME,
+                        "raw": details_parser.prettify(),
+                        "job_url": all_jobs[idx]['job_url'],
+                        "job_title": all_jobs[idx]['job_title_text']
+                    }
+
+                    stmt = insert(Raw).values(**raw_data)
+
+                    stmt = stmt.on_conflict_do_nothing(
+                        index_elements=[
+                            "source",
+                            "external_reference_id",
+                        ]
+                    )
+
+                    result = db.execute(stmt)
+                    logging.info(
+                        f"Saved job {all_jobs[idx]['job_title_text']} #{job_reference} in raw"
+                    )
+                    metrics.rows_out += 1
+                except Exception as e:
+                    metrics.rows_failed += 1
+                    logging.exception(
+                        f"Failed processing {all_jobs[idx].get('job_title_text')}: {e}"
                     )
                     continue
-
-                exists = db.query(Raw).filter(
-                    Raw.source == SOURCE_NAME,
-                    Raw.external_reference_id == job_reference
-                ).first()
-
-                if exists:
-                    logging.info(f"Already exists: {job_reference}")
-                    continue
-                else:
-                    found_new_job = True
-                    logging.info(f"Job not yet on db: {job_reference}")
-
-                raw_data = {
-                    "external_reference_id": job_reference,
-                    "source": SOURCE_NAME,
-                    "raw": details_parser.prettify(),
-                    "job_url": all_jobs[idx]['job_url'],
-                    "job_title": all_jobs[idx]['job_title_text']
-                }
-
-                stmt = insert(Raw).values(**raw_data)
-
-                stmt = stmt.on_conflict_do_nothing(
-                    index_elements=[
-                        "source",
-                        "external_reference_id",
-                    ]
-                )
-
-                db.execute(stmt)
-
-                logging.info(
-                    f"Saved job {all_jobs[idx]['job_title_text']} #{job_reference} in raw"
-                )
 
             db.commit()
             
             if not found_new_job:
                 logging.info("Page contained no new jobs. Stopping collector.")
                 break
-
-
-
-if __name__ == "__main__":
-    main()

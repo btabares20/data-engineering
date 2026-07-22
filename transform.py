@@ -16,6 +16,9 @@ from db.types import StagingRaw, QualityMetrics
 from datetime import date, datetime, timedelta
 from dateutil.parser import parse
 from urllib.parse import urlparse
+from utils.common import pipeline_step
+
+step_name = f"transform"
 
 ALPHA = r'[^a-zA-Z0-9]'
 
@@ -189,11 +192,14 @@ def quality_checks(data: StagingRaw) -> QualityMetrics:
             break
 
     return metrics 
-def main():
+
+@pipeline_step(step_name)
+def main(run_id, decorator_metrics):
     with db_context() as db:
         query = select(Staging, Raw.id, Raw.source, Raw.external_reference_id).join(Raw)
         results = db.execute(query)
         for row in results:
+            decorator_metrics.rows_in += 1
             staging_fields: Staging = row[0]
             raw_id: str = row[1]
             source: str = row[2]
@@ -205,28 +211,33 @@ def main():
                 },
                 source = source,
                 external_reference_id= external_reference_id)
-            metrics = quality_checks(staging_raw)
-            if not all(metrics.values()):
-                print("Skipping row")
-                print(metrics)
-                continue
-            job = transform_data(staging_raw)
-            values = {
-                c.name: getattr(job, c.name)
-                for c in JobPosting.__table__.columns
-                if c.name not in {"id", "created_at", "updated_at"}
-            }
-            stmt = insert(JobPosting).values(**values)
-            stmt = stmt.on_conflict_do_update(
-                constraint="uq_job_postings_source_external_ref",
-                set_={
-                    key: getattr(stmt.excluded, key)
-                    for key in values.keys()
-                    if key not in {"source", "external_reference_id"}
+            try:
+                metrics = quality_checks(staging_raw)
+                if not all(metrics.values()):
+                    print("Skipping row")
+                    print(metrics)
+                    decorator_metrics.rows_skipped +=1
+                    continue
+                job = transform_data(staging_raw)
+                values = {
+                    c.name: getattr(job, c.name)
+                    for c in JobPosting.__table__.columns
+                    if c.name not in {"id", "created_at", "updated_at"}
                 }
-                | {"updated_at": func.now()}
-            )
-            db.execute(stmt)
+                stmt = insert(JobPosting).values(**values)
+                stmt = stmt.on_conflict_do_update(
+                    constraint="uq_job_postings_source_external_ref",
+                    set_={
+                        key: getattr(stmt.excluded, key)
+                        for key in values.keys()
+                        if key not in {"source", "external_reference_id"}
+                    }
+                    | {"updated_at": func.now()}
+                )
+                db.execute(stmt)
+                decorator_metrics.rows_out += 1
+            except Exception as e:
+                decorator_metrics.rows_failed += 1
+                print(f"Failed row {raw_id}: {e}")
+                continue
         db.commit()
-if __name__ == "__main__":
-    main()

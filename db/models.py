@@ -1,10 +1,35 @@
 import uuid
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy import Boolean, Column, Date, Float, ForeignKey, Numeric, String, DateTime, UniqueConstraint, func
+from sqlalchemy import BigInteger, Boolean, Column, Date, Float, ForeignKey, Integer, Numeric, String, DateTime, UniqueConstraint, func
 from sqlalchemy.orm import relationship
 from db.engine import Base, SessionLocal, engine
 
+class PipelineRuns(Base):
+    __tablename__ = "pipeline_runs"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    pipeline_name = Column(String(255), nullable=False)
+    trigger_type = Column(String(255), nullable=False)
+    status = Column(String(255), nullable=False)
+    started_at= Column(DateTime,nullable=False)
+    finished_at = Column(DateTime,nullable=True)
+    elapsed_ms = Column(BigInteger,nullable=True)
+    created_at = Column(DateTime,server_default=func.now(),nullable=False)
 
+class PipelineSteps(Base):
+    __tablename__ = "pipeline_steps"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    pipeline_run_id = Column(UUID(as_uuid=True), ForeignKey("pipeline_runs.id"), nullable=False)
+    step_name = Column(String(255), nullable=False)
+    status = Column(String(255), nullable=False)
+    rows_in = Column(Integer, nullable=False, default=0)
+    rows_out = Column(Integer, nullable=False, default=0)
+    rows_skipped = Column(Integer, nullable=False, default=0)
+    rows_failed = Column(Integer, nullable=False, default=0)
+    error_message = Column(String, nullable=True)
+    started_at= Column(DateTime,nullable=False)
+    finished_at = Column(DateTime,nullable=True)
+    elapsed_ms = Column(BigInteger,nullable=True)
+    created_at = Column(DateTime,server_default=func.now(),nullable=False)
 
 class JobPosting(Base):
     __tablename__ = "job_postings"

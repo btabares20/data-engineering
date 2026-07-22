@@ -6,36 +6,47 @@ from pathlib import Path
 from sqlalchemy import func
 from sqlalchemy.dialects.postgresql import insert
 
-parsed_file = "trade_me_parsed.json"
+from utils.common import pipeline_step
+
+source = "trade_me"
+step_name = f"loader:{source}"
+parsed_file = f"{source}_parsed.json"
 parsed_file = Path(__file__).resolve().parents[1] / parsed_file 
-def main():
+
+@pipeline_step(step_name)
+def main(run_id,metrics):
     with db_context() as db:
         with open(parsed_file, 'r') as file:
             for line in file:
                 if not line.strip():
                     continue
-                    
-                data = json.loads(line.strip())
-                data.pop("reference", None)
-                stmt = insert(Staging).values(**data)
-                stmt = stmt.on_conflict_do_update(
-                    index_elements=["raw_id"],
-                    set_={
-                        **{
-                            c.name: stmt.excluded[c.name]
-                            for c in Staging.__table__.columns
-                            if c.name not in {"id", "raw_id", "created_at", "updated_at"}
-                            },
-                        "updated_at": func.now(),
-                    },
-                )
-                db.execute(stmt)
-                db.query(Raw).filter(
-                    Raw.id == data["raw_id"]
-                ).update(
-                    {"parsed": True}
-                )
-            db.commit()
+                
+                metrics.rows_in +=1
+                try:
+                    data = json.loads(line.strip())
+                    data.pop("reference", None)
+                    stmt = insert(Staging).values(**data)
+                    stmt = stmt.on_conflict_do_update(
+                        index_elements=["raw_id"],
+                        set_={
+                            **{
+                                c.name: stmt.excluded[c.name]
+                                for c in Staging.__table__.columns
+                                if c.name not in {"id", "raw_id", "created_at", "updated_at"}
+                                },
+                            "updated_at": func.now(),
+                        },
+                    )
+                    db.execute(stmt)
+                    db.query(Raw).filter(
+                        Raw.id == data["raw_id"]
+                    ).update(
+                        {"parsed": True}
+                    )
+                
+                    metrics.rows_out +=1
 
-if __name__ == "__main__":
-    main()
+                except Exception:
+                    metrics.rows_failed += 1
+                    raise
+                db.commit()

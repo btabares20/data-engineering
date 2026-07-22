@@ -10,11 +10,13 @@ from pathlib import Path
 from sqlalchemy.dialects.postgresql import insert
 from db.engine import db_context
 from db.models import Raw
+from utils.common import pipeline_step
 
 import requests
 
 URL = "https://api.trademe.co.nz/v1/search/jobs.json"
 SOURCE_NAME = "trade_me"
+step_name = f"scraper:{SOURCE_NAME}"
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:152.0) Gecko/20100101 Firefox/152.0",
@@ -98,8 +100,8 @@ def long_sleep():
     print(f"Long break for {seconds:.0f}s...")
     time.sleep(seconds)
 
-
-def main(region: str = "wellington"):
+@pipeline_step(step_name)
+def main(run_id, region, metrics):
     HEADERS["canonical_path"]= f"/jobs/{region}"
     print("starting trade_me scraper")
     try:
@@ -154,47 +156,55 @@ def main(region: str = "wellington"):
             print(f"Saved {filename.name}")
             jobs = data["List"]
             for job in jobs:
+                metrics.rows_in += 1
                 raw = job 
-                raw_category = raw.get("Category")
-                category_name = get_category_name(raw_category, data["FoundCategories"])
-                raw["CategoryName"]= category_name
-                external_reference_id = str(raw["ListingId"])
-                title = raw["Title"]
-                job_url = raw["CanonicalPath"]
-                exists = db.query(Raw).filter(
-                    Raw.source == SOURCE_NAME,
-                    Raw.external_reference_id == external_reference_id
-                ).first()
+                try:
+                    raw_category = raw.get("Category")
+                    category_name = get_category_name(raw_category, data["FoundCategories"])
+                    raw["CategoryName"]= category_name
+                    external_reference_id = str(raw["ListingId"])
+                    title = raw["Title"]
+                    job_url = raw["CanonicalPath"]
+                    exists = db.query(Raw).filter(
+                        Raw.source == SOURCE_NAME,
+                        Raw.external_reference_id == external_reference_id
+                    ).first()
 
-                if exists:
-                    print(f"Already exists: {external_reference_id}")
+                    if exists:
+                        print(f"Already exists: {external_reference_id}")
+                        metrics.rows_skipped += 1
+                        continue
+                    else:
+                        found_new_job += 1
+                        print(f"Job not yet on db: {external_reference_id}")
+
+                    raw_data = {
+                        "external_reference_id": external_reference_id,
+                        "source": SOURCE_NAME,
+                        "raw": json.dumps(raw),
+                        "job_url": job_url, 
+                        "job_title": title
+                    }
+
+                    stmt = insert(Raw).values(**raw_data)
+
+                    stmt = stmt.on_conflict_do_nothing(
+                        index_elements=[
+                            "source",
+                            "external_reference_id",
+                        ]
+                    )
+
+                    db.execute(stmt)
+                    print(
+                        f"Saved job {title} #{external_reference_id} in raw"
+                    )
+                    metrics.rows_out += 1
+                except Exception as e:
+                    metrics.rows_failed += 1
+                    print(f"Failed {job.get('ListingId')}: {e}")
                     continue
-                else:
-                    found_new_job += 1
-                    print(f"Job not yet on db: {external_reference_id}")
 
-                raw_data = {
-                    "external_reference_id": external_reference_id,
-                    "source": SOURCE_NAME,
-                    "raw": json.dumps(raw),
-                    "job_url": job_url, 
-                    "job_title": title
-                }
-
-                stmt = insert(Raw).values(**raw_data)
-
-                stmt = stmt.on_conflict_do_nothing(
-                    index_elements=[
-                        "source",
-                        "external_reference_id",
-                    ]
-                )
-
-                db.execute(stmt)
-
-                print(
-                    f"Saved job {title} #{external_reference_id} in raw"
-                )
             db.commit()
             if found_new_job == 0:
                 page_since_last_new_job+=1
@@ -222,7 +232,3 @@ def main(region: str = "wellington"):
                 requests_until_long_sleep = random.randint(3, 6)
 
         print("Done.")
-
-
-if __name__ == "__main__":
-    main()

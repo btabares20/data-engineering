@@ -57,3 +57,12 @@ SALARY_UNIT_PATTERNS = {
         re.IGNORECASE,
     ),
 }
+
+class Status(StrEnum):
+    STARTED = "STARTED"
+    SUCCESS = "SUCCESS"
+    FAILED = "FAILED"
+
+PIPELINE="nz-jobs"
+TRIGGER="manual"
+
