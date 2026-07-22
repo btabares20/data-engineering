@@ -17,6 +17,9 @@ from datetime import date, datetime, timedelta
 from dateutil.parser import parse
 from urllib.parse import urlparse
 from utils.common import pipeline_step
+from utils.logging import get_logger 
+
+logger = get_logger(__name__)
 
 step_name = f"transform"
 
@@ -40,7 +43,7 @@ def parse_date(value: str | None) -> date | None:
     try:
         return parse(value).date()
     except ValueError as e:
-        print(str(e))
+        logger.exception(str(e))
         return None
 def clean_string(value: str | None) -> str | None:
     if value is None:
@@ -214,8 +217,8 @@ def main(run_id, decorator_metrics):
             try:
                 metrics = quality_checks(staging_raw)
                 if not all(metrics.values()):
-                    print("Skipping row")
-                    print(metrics)
+                    logger.info("Skipping row")
+                    logger.info(metrics)
                     decorator_metrics.rows_skipped +=1
                     continue
                 job = transform_data(staging_raw)
@@ -238,6 +241,6 @@ def main(run_id, decorator_metrics):
                 decorator_metrics.rows_out += 1
             except Exception as e:
                 decorator_metrics.rows_failed += 1
-                print(f"Failed row {raw_id}: {e}")
+                logger.exception(f"Failed row {raw_id}: {e}")
                 continue
         db.commit()

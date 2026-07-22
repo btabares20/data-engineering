@@ -13,6 +13,9 @@ from db.models import Raw
 from utils.common import pipeline_step
 
 import requests
+from utils.logging import get_logger 
+
+logger = get_logger(__name__)
 
 URL = "https://api.trademe.co.nz/v1/search/jobs.json"
 SOURCE_NAME = "trade_me"
@@ -91,25 +94,25 @@ def get_resume_page(region) -> int:
 
 def short_sleep():
     seconds = random.uniform(2.5, 6.5)
-    print(f"Sleeping {seconds:.1f}s...")
+    logger.info(f"Sleeping {seconds:.1f}s...")
     time.sleep(seconds)
 
 
 def long_sleep():
     seconds = random.uniform(60, 120)
-    print(f"Long break for {seconds:.0f}s...")
+    logger.info(f"Long break for {seconds:.0f}s...")
     time.sleep(seconds)
 
 @pipeline_step(step_name)
 def main(run_id, region, metrics):
     HEADERS["canonical_path"]= f"/jobs/{region}"
-    print("starting trade_me scraper")
+    logger.info("starting trade_me scraper")
     try:
         page = get_resume_page(region)
     except RuntimeError as e:
-        print(str(e))
+        logger.exception(str(e))
         return
-    print(f"Starting from page {page}")
+    logger.info(f"Starting from page {page}")
 
     session = requests.Session()
     session.headers.update(HEADERS)
@@ -124,7 +127,7 @@ def main(run_id, region, metrics):
         page_since_last_new_job = 0
         while last_page is None or page <= last_page:
             found_new_job = 0
-            print(f"Fetching page {page}...")
+            logger.info(f"Fetching page {page}...")
 
             params = BASE_PARAMS | {
                 "page": page,
@@ -140,11 +143,11 @@ def main(run_id, region, metrics):
                 total_jobs = data["TotalCount"]  # Change if necessary
                 last_page = math.ceil(total_jobs / BASE_PARAMS["rows"])
 
-                print(f"Found {total_jobs} jobs")
-                print(f"Total pages: {last_page}")
+                logger.info(f"Found {total_jobs} jobs")
+                logger.info(f"Total pages: {last_page}")
 
                 if page > last_page:
-                    print("Everything has already been downloaded.")
+                    logger.info("Everything has already been downloaded.")
                     return
 
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -153,7 +156,7 @@ def main(run_id, region, metrics):
             with filename.open("w", encoding="utf-8") as f:
                 json.dump(data, f, ensure_ascii=False, indent=2)
 
-            print(f"Saved {filename.name}")
+            logger.info(f"Saved {filename.name}")
             jobs = data["List"]
             for job in jobs:
                 metrics.rows_in += 1
@@ -171,12 +174,12 @@ def main(run_id, region, metrics):
                     ).first()
 
                     if exists:
-                        print(f"Already exists: {external_reference_id}")
+                        logger.info(f"Already exists: {external_reference_id}")
                         metrics.rows_skipped += 1
                         continue
                     else:
                         found_new_job += 1
-                        print(f"Job not yet on db: {external_reference_id}")
+                        logger.info(f"Job not yet on db: {external_reference_id}")
 
                     raw_data = {
                         "external_reference_id": external_reference_id,
@@ -196,13 +199,13 @@ def main(run_id, region, metrics):
                     )
 
                     db.execute(stmt)
-                    print(
+                    logger.info(
                         f"Saved job {title} #{external_reference_id} in raw"
                     )
                     metrics.rows_out += 1
                 except Exception as e:
                     metrics.rows_failed += 1
-                    print(f"Failed {job.get('ListingId')}: {e}")
+                    logger.exception(f"Failed {job.get('ListingId')}: {e}")
                     continue
 
             db.commit()
@@ -210,7 +213,7 @@ def main(run_id, region, metrics):
                 page_since_last_new_job+=1
             
             if page_since_last_new_job == 2:
-                print(f"Stopping trademe collector ... no new jobs found since the last {page_since_last_new_job} page")
+                logger.info(f"Stopping trademe collector ... no new jobs found since the last {page_since_last_new_job} page")
                 break
 
             if page == last_page:
@@ -218,7 +221,7 @@ def main(run_id, region, metrics):
                     filename.stem + "_END" + filename.suffix
                 )
                 filename.rename(end_filename)
-                print(f"Marked crawl complete: {end_filename.name}")
+                logger.info(f"Marked crawl complete: {end_filename.name}")
                 break
 
             page += 1
@@ -231,4 +234,4 @@ def main(run_id, region, metrics):
                 requests_since_long_sleep = 0
                 requests_until_long_sleep = random.randint(3, 6)
 
-        print("Done.")
+        logger.info("Done.")

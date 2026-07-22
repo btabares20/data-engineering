@@ -6,6 +6,9 @@ from db.engine import db_context
 from db.mappings import Status
 from db.models import Raw
 from utils.common import utc_now, pipeline_step
+from utils.logging import get_logger 
+
+logger = get_logger(__name__)
 
 source_name = 'jobs_govt_nz'
 step_name = f"parser:{source_name}"
@@ -56,7 +59,7 @@ def main(run_id, metrics): # i'm keeping the run_id even if it isn't used
                     except Exception:
                         jobs_failed += 1
         except Exception as e:
-            print(str(e))
+            logger.exception(str(e))
             raise
         finally:
             metrics.rows_out = jobs_inserted

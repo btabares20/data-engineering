@@ -7,6 +7,9 @@ from db.engine import db_context
 from db.mappings import EMPLOYMENT_KEYWORDS
 from db.models import Raw
 from utils.common import pipeline_step
+from utils.logging import get_logger 
+
+logger = get_logger(__name__)
 
 source_name = 'trade_me'
 step_name = f"parser:{source_name}"
@@ -61,7 +64,7 @@ def main(run_id, metrics):
                     except Exception:
                         jobs_failed += 1
         except Exception as e:
-            print(str(e))
+            logger.exception(str(e))
             raise
         finally:
             metrics.rows_out = jobs_inserted

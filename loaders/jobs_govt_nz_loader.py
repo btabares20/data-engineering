@@ -7,6 +7,9 @@ from sqlalchemy import func
 from sqlalchemy.dialects.postgresql import insert
 
 from utils.common import pipeline_step
+from utils.logging import get_logger 
+
+logger = get_logger(__name__)
 
 source = "jobs_govt_nz"
 step_name = f"loader:{source}"
@@ -24,6 +27,7 @@ def main(run_id,metrics):
                 metrics.rows_in +=1
                 try:
                     data = json.loads(line.strip())
+                    logger.debug(data)
                     data.pop("reference", None)
                     stmt = insert(Staging).values(**data)
                     stmt = stmt.on_conflict_do_update(

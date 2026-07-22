@@ -1,17 +1,13 @@
 import requests
 from bs4 import BeautifulSoup
-import logging
 from db.engine import db_context
 from db.models import Raw
 from sqlalchemy.dialects.postgresql import insert
 
 from utils.common import pipeline_step
+from utils.logging import get_logger 
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S"
-)
+logger = get_logger(__name__)
 
 BASE_URL = "https://jobs.govt.nz"
 SOURCE_NAME = 'jobs_govt_nz'
@@ -40,14 +36,14 @@ BODY = {
 }
 @pipeline_step(step_name)
 def main(run_id, metrics):
-    print("starting jobs govt nz scraper")
+    logger.info("starting jobs govt nz scraper")
     page = "0"
     next_page = 1
     total_jobs = 0
 
     with db_context() as db:
         while True:
-            logging.info(f"Fetching jobs from page # {next_page}")
+            logger.info(f"Fetching jobs from page # {next_page}")
             if total_jobs and int(page) >= int(total_jobs):
                 break
             BODY['in_pg']=page
@@ -64,7 +60,7 @@ def main(run_id, metrics):
             if not total_jobs:
                 total_jobs = parser.find("input",attrs={"name":"in_totalrows"})
                 total_jobs = total_jobs.get("value") if total_jobs else 0
-                logging.info(f"Found {total_jobs} jobs")
+                logger.info(f"Found {total_jobs} jobs")
 
             for tr in parser.find_all('tr'):
                 title_td = tr.find('td', class_='job_title')
@@ -102,7 +98,7 @@ def main(run_id, metrics):
                                 break
 
                     if not job_reference:
-                        logging.warning(
+                        logger.warning(
                             f"Skipping job without reference: "
                             f"{all_jobs[idx]['job_title_text']}"
                         )
@@ -115,12 +111,12 @@ def main(run_id, metrics):
                     ).first()
 
                     if exists:
-                        logging.info(f"Already exists: {job_reference}")
+                        logger.info(f"Already exists: {job_reference}")
                         metrics.rows_skipped += 1
                         continue
                     else:
                         found_new_job = True
-                        logging.info(f"Job not yet on db: {job_reference}")
+                        logger.info(f"Job not yet on db: {job_reference}")
 
                     raw_data = {
                         "external_reference_id": job_reference,
@@ -140,13 +136,13 @@ def main(run_id, metrics):
                     )
 
                     result = db.execute(stmt)
-                    logging.info(
+                    logger.info(
                         f"Saved job {all_jobs[idx]['job_title_text']} #{job_reference} in raw"
                     )
                     metrics.rows_out += 1
                 except Exception as e:
                     metrics.rows_failed += 1
-                    logging.exception(
+                    logger.exception(
                         f"Failed processing {all_jobs[idx].get('job_title_text')}: {e}"
                     )
                     continue
@@ -154,5 +150,5 @@ def main(run_id, metrics):
             db.commit()
             
             if not found_new_job:
-                logging.info("Page contained no new jobs. Stopping collector.")
+                logger.info("Page contained no new jobs. Stopping collector.")
                 break
