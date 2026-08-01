@@ -108,6 +108,24 @@ class Raw(Base):
         ),
     )
 
+class RawV2(Base):
+    __tablename__ = "raw_test"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    external_reference_id = Column(String, nullable=False)
+    parsed = Column(Boolean, default=False)
+    raw = Column(String, nullable=False)
+    source = Column(String, nullable=False)
+    job_title = Column(String, nullable=False)
+    job_url = Column(String, nullable=True)
+    created_at = Column(DateTime, server_default=func.now())
+    __table_args__ = (
+        UniqueConstraint(
+            "source",
+            "external_reference_id",
+            name="uq_raw_source_external_ref_test",
+        ),
+    )
 
 
 SessionLocal.configure(bind=engine)
