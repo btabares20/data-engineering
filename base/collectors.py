@@ -56,5 +56,8 @@ class JobsGovtCollector(Collector):
                 }
                 if self.storage.save(job):
                     found_new_job = True
+            if not found_new_job:
+                logger.info("No New jobs found... breaking the cycle")
+                break
 
         return self.metrics 

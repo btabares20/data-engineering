@@ -17,21 +17,22 @@ class PostgreSQLRawStorage[ModelT](Storage):
     def __init__(
         self, 
         session: Session, 
-        model: Type[ModelT], 
+        save_model: Type[ModelT], 
         conflict_columns: list[str]
     ) -> None:
         self.session = session
-        self.model = model
+        self.save_model = save_model
         self.conflict_columns = conflict_columns
 
     def save(self, job: dict) -> bool:
-        stmt = insert(self.model).values(**job)
+        stmt = insert(self.save_model).values(**job)
         stmt = stmt.on_conflict_do_nothing(
             index_elements=self.conflict_columns
         )
 
         result = self.session.execute(stmt)
         self.session.commit()
-        inserted_id = result.scalar_one_or_none()
+        rowcount = result.rowcount
+        logger.debug(f"Saved {job}")
         
-        return True if inserted_id else False
+        return True if rowcount > 0 else False

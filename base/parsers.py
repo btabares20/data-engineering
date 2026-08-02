@@ -47,7 +47,7 @@ class JobsGovtParser(Parser):
         if row is not None:
             title_td = row.find("td", class_="job_title")
             if not title_td:
-                logger.warning("Could not find job title")
+                logger.warning("Skipping row")
                 return None
             
             first_link = title_td.find("a")
@@ -83,7 +83,6 @@ class JobsGovtParser(Parser):
                 return None
 
             if "Reference" in cells[0].get_text(strip=True):
-                logger.info("Found Reference tag")
                 return cells[1].get_text(strip=True)
 
         return None
