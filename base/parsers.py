@@ -1,22 +1,12 @@
 from abc import ABC, abstractmethod
+from typing import Any
 from bs4 import BeautifulSoup, Tag 
 from utils.logging import get_logger
 
 logger = get_logger(__name__)
 
 
-class Parser(ABC):
-    @abstractmethod
-    def parse_job_count(self, data: str)->int:
-        ...
-    @abstractmethod
-    def parse_listings(self, data: str)->list[dict]:
-        ...
-    @abstractmethod
-    def parse_details(self, data: str)-> dict | None:
-        ...
-        
-class JobsGovtParser(Parser):
+class JobsGovtRawParser:
     def parse_job_count(self, data: str) -> int:
         parser = BeautifulSoup(data, "html.parser")
         tag = parser.find("input", attrs={"name": "in_totalrows"})
@@ -108,3 +98,32 @@ class JobsGovtParser(Parser):
             "raw": details_parser.prettify()
         }
         return job_raw_data
+
+class TradeMeRawParser:
+    # kind shitty because we don't need to parse trademe
+    def parse_job_count(self, data: dict)->int:
+        if "TotalCount" not in data:
+            logger.warning("Could not determine proper job count")
+            return 0
+        return data["TotalCount"]
+
+    def _get_category_name(self, raw_category: str, categories: dict)-> str | None:
+        category_split = raw_category.rstrip("-").split("-")
+        category_code_prefix = "-".join(category_split[:2]) + "-"
+        category_code_name = int(category_split[1])
+        category_name = next(
+            (
+                category["Name"] for category in categories 
+                if category.get("Category") == category_code_prefix 
+                and category.get("CategoryId") == category_code_name
+            ),
+            None,
+        )
+        return category_name
+    
+    def _get_categories(self, data: dict) -> dict:
+        return data["FoundCategories"]
+
+    def parse_listings(self, data: dict)->list[dict]:
+        return data["List"]
+
