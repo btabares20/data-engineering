@@ -36,7 +36,7 @@ def main():
                 headers=headers,
                 body=body
             ),
-            parser = JobsGovtParser(),
+            parser = JobsGovtRawParser(),
             storage = PostgreSQLRawStorage(
                 session=db,
                 conflict_columns=[
