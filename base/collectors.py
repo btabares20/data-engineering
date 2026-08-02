@@ -4,7 +4,6 @@ from bs4 import BeautifulSoup
 from base.clients import Client, JobsGovtClient
 from base.parsers import JobsGovtParser, Parser
 from base.storage import Storage, PostgreSQLRawStorage
-from db.engine import db_context
 from utils.logging import get_logger
 
 logger = get_logger(__name__)
@@ -31,32 +30,31 @@ class JobsGovtCollector(Collector):
         page = "0"
         next_page = 1
         jobs = []
-        with db_context() as db:
-            while True:
-                found_new_job = False
-                logger.info(f"Fetching jobs from page # {next_page}")
-                if self.total_jobs and int(page) >= self.total_jobs:
-                    break
-                main_page_html = self.client.get_listing_page(page)
-                page = str(next_page*20)
-                next_page += 1
+        while True:
+            found_new_job = False
+            logger.info(f"Fetching jobs from page # {next_page}")
+            if self.total_jobs and int(page) >= self.total_jobs:
+                break
+            main_page_html = self.client.get_listing_page(page)
+            page = str(next_page*20)
+            next_page += 1
 
-                if not self.total_jobs:
-                    self.total_jobs = self.parser.parse_job_count(main_page_html)
+            if not self.total_jobs:
+                self.total_jobs = self.parser.parse_job_count(main_page_html)
 
-                listings = self.parser.parse_listings(main_page_html)
-                for listing in listings:
-                    listing_page = self.client.get_job_page(listing["job_url"])
-                    listing_details = self.parser.parse_details(listing_page)
-                    if listing_details is None:
-                        continue
-                    job = {
-                        **listing_details,
-                        "source": self.source,
-                        "job_url": listing["job_url"],
-                        "job_title": listing["job_title_text"]
-                    }
-                    if self.storage.save(job):
-                        found_new_job = True
+            listings = self.parser.parse_listings(main_page_html)
+            for listing in listings:
+                listing_page = self.client.get_job_page(listing["job_url"])
+                listing_details = self.parser.parse_details(listing_page)
+                if listing_details is None:
+                    continue
+                job = {
+                    **listing_details,
+                    "source": self.source,
+                    "job_url": listing["job_url"],
+                    "job_title": listing["job_title_text"]
+                }
+                if self.storage.save(job):
+                    found_new_job = True
 
         return self.metrics 
