@@ -1,6 +1,6 @@
 from base.clients import JobsGovtClient
 from base.collectors import JobsGovtCollector
-from base.parsers import JobsGovtParser
+from base.parsers import JobsGovtRawParser
 from base.storage import PostgreSQLRawStorage
 from db.engine import db_context
 from db.models import RawV2
