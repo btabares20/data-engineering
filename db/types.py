@@ -27,3 +27,10 @@ class QualityMetrics(TypedDict):
     url_validation: bool
     value_validation: bool
 
+class StepMetrics:
+    def __init__(self):
+        self.rows_in = 0
+        self.rows_out = 0
+        self.rows_failed = 0
+        self.rows_skipped = 0
+

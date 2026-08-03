@@ -4,9 +4,9 @@ from base.parsers import JobsGovtRawParser
 from base.storage import PostgreSQLRawStorage
 from db.engine import db_context
 from db.models import RawV2
+from utils.common import pipeline_step_two
 
-
-
+@pipeline_step_two("collector:jobs_govt_nz")
 def main():
     base_url = "https://jobs.govt.nz"
     headers = {
@@ -46,7 +46,8 @@ def main():
                 save_model=RawV2
             )
         )
-        collector.collect()
+        metrics = collector.collect()
+        return metrics
 
 if __name__ == "__main__":
     main()
