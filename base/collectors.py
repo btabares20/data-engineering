@@ -12,7 +12,6 @@ from bs4 import BeautifulSoup
 from base.clients import JobsGovtClient, TradeMeClient
 from base.parsers import JobsGovtRawParser, TradeMeRawParser
 from base.storage import PostgreSQLRawStorage
-from db.types import StepMetrics
 from utils.logging import get_logger
 
 logger = get_logger(__name__)
@@ -32,7 +31,6 @@ class TradeMeCollector(Collector):
         self.client = client
         self.parser = parser 
         self.storage = storage
-        self.metrics = StepMetrics()
         self.output_dir = Path(f"raw_data/{self.source}")
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -101,9 +99,8 @@ class TradeMeCollector(Collector):
             for job in raw_jobs:
                 raw = job
                 if raw is None:
-                    self.metrics.rows_skipped += 1
                     continue
-                self.metrics.rows_in += 1
+
                 raw_category = raw["Category"]
                 category_name = self.parser._get_category_name(
                     raw_category,
@@ -144,17 +141,12 @@ class TradeMeCollector(Collector):
 
         return jobs
 
-    def collect(self)->StepMetrics:
+    def collect(self):
         wellington_jobs = self.collect_region("wellington")
         auckland_jobs = self.collect_region("auckland")
         jobs = wellington_jobs + auckland_jobs
         for job in jobs:
-            if self.storage.save(job):
-                self.metrics.rows_out += 1
-            else:
-                self.metrics.rows_skipped += 1
-
-        return self.metrics
+            self.storage.save(job)
 
 class JobsGovtCollector(Collector):
     def __init__(self, 
@@ -167,9 +159,8 @@ class JobsGovtCollector(Collector):
         self.parser = parser 
         self.storage = storage
         self.total_jobs = 0
-        self.metrics = StepMetrics()
 
-    def collect(self)->StepMetrics:
+    def collect(self):
         page = "0"
         next_page = 1
         jobs = []
@@ -186,7 +177,6 @@ class JobsGovtCollector(Collector):
                 self.total_jobs = self.parser.parse_job_count(main_page_html)
 
             listings = self.parser.parse_listings(main_page_html)
-            self.metrics.rows_in += len(listings)
             for listing in listings:
                 listing_page = self.client.get_job_page(listing["job_url"])
                 listing_details = self.parser.parse_details(listing_page)
@@ -199,12 +189,8 @@ class JobsGovtCollector(Collector):
                     "job_title": listing["job_title_text"]
                 }
                 if self.storage.save(job):
-                    self.metrics.rows_out += 1
                     found_new_job = True
-                else:
-                    self.metrics.rows_skipped += 1
+
             if not found_new_job:
                 logger.info("No New jobs found... breaking the cycle")
                 break
-
-        return self.metrics 

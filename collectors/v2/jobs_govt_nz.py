@@ -3,10 +3,8 @@ from base.collectors import JobsGovtCollector
 from base.parsers import JobsGovtRawParser
 from base.storage import PostgreSQLRawStorage
 from db.engine import db_context
-from db.models import RawV2
-from utils.common import pipeline_step_v2
+from db.models import Raw
 
-@pipeline_step_v2("collector:jobs_govt_nz")
 def main():
     base_url = "https://jobs.govt.nz"
     headers = {
@@ -43,7 +41,7 @@ def main():
                     "source",
                     "external_reference_id"
                 ],
-                save_model=RawV2
+                save_model=Raw
             )
         )
         metrics = collector.collect()

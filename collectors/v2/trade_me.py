@@ -3,11 +3,8 @@ from base.collectors import TradeMeCollector
 from base.parsers import TradeMeRawParser
 from base.storage import PostgreSQLRawStorage
 from db.engine import db_context
-from db.models import RawV2
-from utils.common import pipeline_step_v2
+from db.models import Raw 
 
-
-@pipeline_step_v2("collector:trade_me")
 def main():
     url = "https://api.trademe.co.nz/v1/search/jobs.json"
     source = "trade_me"
@@ -52,11 +49,10 @@ def main():
                     "source",
                     "external_reference_id"
                 ],
-                save_model=RawV2
+                save_model=Raw
             )
         )
-        metrics = collector.collect()
-        return metrics
+        collector.collect()
 
 if __name__ == "__main__":
     main()
