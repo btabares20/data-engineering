@@ -4,10 +4,10 @@ from base.parsers import TradeMeRawParser
 from base.storage import PostgreSQLRawStorage
 from db.engine import db_context
 from db.models import RawV2
-from utils.common import pipeline_step_two
+from utils.common import pipeline_step_v2
 
 
-@pipeline_step_two("collector:trade_me")
+@pipeline_step_v2("collector:trade_me")
 def main():
     url = "https://api.trademe.co.nz/v1/search/jobs.json"
     source = "trade_me"
