@@ -7,16 +7,15 @@ from uuid import uuid4
 from sqlalchemy import UUID, func, select
 
 from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.orm import Session
 from db.engine import db_context
 from db.mappings import EMPLOYMENT_KEYWORDS, WORK_SCHEDULE_KEYWORDS, EmploymentType, WorkSchedule, CURRENCY, SALARY_UNIT_PATTERNS, NUMBER_PATTERN
 from db.models import Raw, Staging, JobPosting
 from db.types import StagingRaw, QualityMetrics
 
-
 from datetime import date, datetime, timedelta
 from dateutil.parser import parse
 from urllib.parse import urlparse
-from utils.common import pipeline_step
 from utils.logging import get_logger 
 
 logger = get_logger(__name__)
@@ -196,13 +195,11 @@ def quality_checks(data: StagingRaw) -> QualityMetrics:
 
     return metrics 
 
-@pipeline_step(step_name)
-def main(run_id, decorator_metrics):
+def transform():
     with db_context() as db:
         query = select(Staging, Raw.id, Raw.source, Raw.external_reference_id).join(Raw)
         results = db.execute(query)
         for row in results:
-            decorator_metrics.rows_in += 1
             staging_fields: Staging = row[0]
             raw_id: str = row[1]
             source: str = row[2]
@@ -219,7 +216,6 @@ def main(run_id, decorator_metrics):
                 if not all(metrics.values()):
                     logger.info("Skipping row")
                     logger.info(metrics)
-                    decorator_metrics.rows_skipped +=1
                     continue
                 job = transform_data(staging_raw)
                 values = {
@@ -238,9 +234,7 @@ def main(run_id, decorator_metrics):
                     | {"updated_at": func.now()}
                 )
                 db.execute(stmt)
-                decorator_metrics.rows_out += 1
             except Exception as e:
-                decorator_metrics.rows_failed += 1
                 logger.exception(f"Failed row {raw_id}: {e}")
                 continue
         db.commit()

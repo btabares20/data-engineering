@@ -1,4 +1,3 @@
-from abc import ABC, abstractmethod
 from datetime import datetime
 import json
 import math
@@ -7,19 +6,14 @@ import random
 import re
 import time
 from typing import Any
-
 from bs4 import BeautifulSoup
-from base.clients import JobsGovtClient, TradeMeClient
-from base.parsers import JobsGovtRawParser, TradeMeRawParser
-from base.storage import PostgreSQLRawStorage
+from collection.clients import JobsGovtClient, TradeMeClient
+from collection.parsers import JobsGovtRawParser, TradeMeRawParser
+from storage.postgres import PostgreSQLRawStorage
+from collection.base import Collector
 from utils.logging import get_logger
 
 logger = get_logger(__name__)
-
-class Collector(ABC):
-    @abstractmethod
-    def collect(self)->Any:
-        ...
 
 class TradeMeCollector(Collector):
     def __init__(self, 

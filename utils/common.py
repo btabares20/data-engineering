@@ -1,4 +1,5 @@
 from datetime import datetime, UTC
+import re
 from threading import Event
 from db.engine import db_context
 from db.mappings import Status
@@ -105,3 +106,13 @@ def pipeline_step_v2(step_name):
 
         return wrapper
     return decorator
+
+def dotnet_date_to_string(value: str | None, fmt: str = "%d-%b-%Y") -> str | None:
+    if not value:
+        return None
+    match = re.search(r"\d+", value)
+    if not match:
+        return None
+    milliseconds = int(match.group())
+    return datetime.fromtimestamp(milliseconds / 1000).strftime(fmt)
+

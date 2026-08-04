@@ -1,5 +1,4 @@
 from abc import ABC, abstractmethod
-from typing import Any
 from bs4 import BeautifulSoup, Tag 
 from utils.logging import get_logger
 
@@ -100,7 +99,6 @@ class JobsGovtRawParser:
         return job_raw_data
 
 class TradeMeRawParser:
-    # kind shitty because we don't need to parse trademe
     def parse_job_count(self, data: dict)->int:
         if "TotalCount" not in data:
             logger.warning("Could not determine proper job count")

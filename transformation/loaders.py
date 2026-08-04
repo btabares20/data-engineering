@@ -1,30 +1,20 @@
 import json
-
+from sqlalchemy.orm import Session
 from db.engine import db_context
 from db.models import Staging, Raw
 from pathlib import Path
 from sqlalchemy import func
 from sqlalchemy.dialects.postgresql import insert
-
-from utils.common import pipeline_step
 from utils.logging import get_logger 
 
 logger = get_logger(__name__)
 
-source = "jobs_govt_nz"
-step_name = f"loader:{source}"
-parsed_file = f"{source}_parsed.json"
-parsed_file = Path(__file__).resolve().parents[1] / parsed_file 
-
-@pipeline_step(step_name)
-def main(run_id,metrics):
+def loader(filename: str):
     with db_context() as db:
-        with open(parsed_file, 'r') as file:
+        with open(filename, 'r') as file:
             for line in file:
                 if not line.strip():
                     continue
-                
-                metrics.rows_in +=1
                 try:
                     data = json.loads(line.strip())
                     logger.debug(data)
@@ -47,10 +37,6 @@ def main(run_id,metrics):
                     ).update(
                         {"parsed": True}
                     )
-                
-                    metrics.rows_out +=1
-
                 except Exception:
-                    metrics.rows_failed += 1
                     raise
                 db.commit()

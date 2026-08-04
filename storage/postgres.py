@@ -1,5 +1,5 @@
-from abc import ABC, abstractmethod
-from typing import Type, TypeVar
+from typing import Type, TypeVar, cast
+from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm.session import Session
 from sqlalchemy.dialects.postgresql import insert
 from utils.logging import get_logger 
@@ -8,12 +8,8 @@ logger = get_logger(__name__)
 
 ModelT = TypeVar("ModelT")
 
-class Storage(ABC):
-    @abstractmethod
-    def save(self, job: dict) -> bool:
-        ...
 
-class PostgreSQLRawStorage[ModelT](Storage):
+class PostgreSQLRawStorage[ModelT]:
     def __init__(
         self, 
         session: Session, 
@@ -30,7 +26,7 @@ class PostgreSQLRawStorage[ModelT](Storage):
             index_elements=self.conflict_columns
         )
 
-        result = self.session.execute(stmt)
+        result = cast(CursorResult, self.session.execute(stmt))
         self.session.commit()
         rowcount = result.rowcount
         logger.debug(f"Saved {job}")
