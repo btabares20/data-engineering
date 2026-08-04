@@ -35,3 +35,32 @@ def run_trade_me_loader():
 def run_transform():
     with db_context() as db:
         transform(db)
+
+
+async def main():
+    with db_context() as db:
+        try:
+            logger.info("Starting collectors...")
+            await asyncio.gather(
+                asyncio.to_thread(run_jobs_govt_collector),
+                asyncio.to_thread(run_trade_me_collector)
+            )
+            logger.info("Starting parsers...")
+            await asyncio.gather(
+                asyncio.to_thread(run_jobs_govt_parser),
+                asyncio.to_thread(run_trade_me_parser)
+            )
+            logger.info("Starting loaders...")
+            await asyncio.gather(
+                asyncio.to_thread(run_jobs_govt_loader),
+                asyncio.to_thread(run_trade_me_loader)
+            )
+            logger.info("Starting data quality check and transform...")
+            await asyncio.to_thread(run_transform)
+        except Exception as e:
+            logger.exception(str(e))
+
+    logger.info("Pipeline finished...")
+
+if __name__ == "__main__":
+    asyncio.run(main())
