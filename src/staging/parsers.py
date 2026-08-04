@@ -77,7 +77,6 @@ class JobsParser:
         return raws
 
     def parse(self):
-        return
         jobs = []
         raws = self._get_jobs()
         for raw in raws:
