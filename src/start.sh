@@ -1,2 +1,2 @@
 #!/bin/bash
-venv/bin/python -m orchestrator
+../venv/bin/python -m orchestrator
