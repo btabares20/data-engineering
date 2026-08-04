@@ -195,46 +195,45 @@ def quality_checks(data: StagingRaw) -> QualityMetrics:
 
     return metrics 
 
-def transform():
-    with db_context() as db:
-        query = select(Staging, Raw.id, Raw.source, Raw.external_reference_id).join(Raw)
-        results = db.execute(query)
-        for row in results:
-            staging_fields: Staging = row[0]
-            raw_id: str = row[1]
-            source: str = row[2]
-            external_reference_id: str = row[3]
-            staging_raw: StagingRaw= StagingRaw(
-                **{
-                    c.name: getattr(staging_fields, c.name)
-                    for c in Staging.__table__.columns
-                },
-                source = source,
-                external_reference_id= external_reference_id)
-            try:
-                metrics = quality_checks(staging_raw)
-                if not all(metrics.values()):
-                    logger.info("Skipping row")
-                    logger.info(metrics)
-                    continue
-                job = transform_data(staging_raw)
-                values = {
-                    c.name: getattr(job, c.name)
-                    for c in JobPosting.__table__.columns
-                    if c.name not in {"id", "created_at", "updated_at"}
-                }
-                stmt = insert(JobPosting).values(**values)
-                stmt = stmt.on_conflict_do_update(
-                    constraint="uq_job_postings_source_external_ref",
-                    set_={
-                        key: getattr(stmt.excluded, key)
-                        for key in values.keys()
-                        if key not in {"source", "external_reference_id"}
-                    }
-                    | {"updated_at": func.now()}
-                )
-                db.execute(stmt)
-            except Exception as e:
-                logger.exception(f"Failed row {raw_id}: {e}")
+def transform(db: Session):
+    query = select(Staging, Raw.id, Raw.source, Raw.external_reference_id).join(Raw)
+    results = db.execute(query)
+    for row in results:
+        staging_fields: Staging = row[0]
+        raw_id: str = row[1]
+        source: str = row[2]
+        external_reference_id: str = row[3]
+        staging_raw: StagingRaw= StagingRaw(
+            **{
+                c.name: getattr(staging_fields, c.name)
+                for c in Staging.__table__.columns
+            },
+            source = source,
+            external_reference_id= external_reference_id)
+        try:
+            metrics = quality_checks(staging_raw)
+            if not all(metrics.values()):
+                logger.info("Skipping row")
+                logger.info(metrics)
                 continue
-        db.commit()
+            job = transform_data(staging_raw)
+            values = {
+                c.name: getattr(job, c.name)
+                for c in JobPosting.__table__.columns
+                if c.name not in {"id", "created_at", "updated_at"}
+            }
+            stmt = insert(JobPosting).values(**values)
+            stmt = stmt.on_conflict_do_update(
+                constraint="uq_job_postings_source_external_ref",
+                set_={
+                    key: getattr(stmt.excluded, key)
+                    for key in values.keys()
+                    if key not in {"source", "external_reference_id"}
+                }
+                | {"updated_at": func.now()}
+            )
+            db.execute(stmt)
+        except Exception as e:
+            logger.exception(f"Failed row {raw_id}: {e}")
+            continue
+    db.commit()
