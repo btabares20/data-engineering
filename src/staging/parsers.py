@@ -81,6 +81,6 @@ class JobsParser:
         raws = self._get_jobs()
         for raw in raws:
             job = self.parser.parse_raw(raw)
-            jobs.append(jobs)
+            jobs.append(job)
 
         self.storage.save(f"{self.source}_parsed.json", jobs)
