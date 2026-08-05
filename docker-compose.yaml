@@ -50,6 +50,7 @@ x-airflow-common:
     - ${AIRFLOW_PROJ_DIR:-.}/config:/opt/airflow/config
     - ${AIRFLOW_PROJ_DIR:-.}/plugins:/opt/airflow/plugins
     - ./src:/opt/project/src
+    - ./src/raw_data:/opt/airflow/raw_data
   user: "${AIRFLOW_UID:-50000}:0"
   networks:
     - shared

@@ -1,5 +1,7 @@
 from abc import ABC, abstractmethod
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
 class JobsGovtClient:
     def __init__(self, base_url: str, headers: dict, body: dict) -> None:
@@ -7,6 +9,17 @@ class JobsGovtClient:
         self.headers = headers
         self.body = body
         self.session = requests.Session()
+        retry = Retry(
+            total=3,
+            backoff_factor=2,
+            allowed_methods=["GET"],
+            status_forcelist=[429, 500, 502, 503, 504],
+        )
+
+        adapter = HTTPAdapter(max_retries=retry)
+
+        self.session.mount("https://", adapter)
+        self.session.mount("http://", adapter)
 
     def get_listing_page(self, page: str) -> str:
         self.body["in_pg"] = page
