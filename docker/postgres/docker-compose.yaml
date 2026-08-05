@@ -10,6 +10,13 @@ services:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql
+    networks:
+      - shared
 
 volumes:
   pgdata:
+
+networks:
+  shared:
+    external: true
+    name: data-pipeline
