@@ -4,7 +4,7 @@ from sqlalchemy.orm import sessionmaker, declarative_base
 from contextlib import contextmanager
 
 Base = declarative_base()
-SessionLocal = sessionmaker(autocommit=False, autoflush=False)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, expire_on_commit=False)
 
 def get_db():
     db = SessionLocal()
