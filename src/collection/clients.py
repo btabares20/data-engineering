@@ -22,7 +22,7 @@ class JobsGovtClient:
         base = self.base_url
         if not url.startswith("/jobs"):
             base += "/jobtools/"
-        response = self.session.get(base+url)
+        response = self.session.get(base+url, timeout=30)
         response.raise_for_status()
         return response.text
 

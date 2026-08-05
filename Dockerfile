@@ -12,4 +12,3 @@ RUN apt-get update \
 USER airflow
 
 RUN pip install --no-cache-dir -r /requirements.txt
-COPY src /opt/project/src

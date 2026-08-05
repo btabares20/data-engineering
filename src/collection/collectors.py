@@ -111,6 +111,7 @@ class TradeMeCollector(Collector):
                     "job_title": raw["Title"] 
                 }
                 jobs.append(job_details)
+                found_new_job += 1
             if found_new_job == 0:
                 page_since_last_new_job+=1
             
