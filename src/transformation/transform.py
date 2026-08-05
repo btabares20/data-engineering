@@ -4,7 +4,7 @@ from types import UnionType
 from typing import ContextManager, get_type_hints
 from uuid import uuid4
 
-from sqlalchemy import UUID, func, select
+from sqlalchemy import func, select
 
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
