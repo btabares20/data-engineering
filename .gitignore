@@ -5,3 +5,6 @@ airflow.cfg
 staging.db
 raw_data/
 __pycache__/
+airflow/logs/
+airflow/config/
+airflow/plugins/
