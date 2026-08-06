@@ -16,8 +16,8 @@ from orchestrator import (
 
 with DAG(
     dag_id="pipeline",
-    start_date=None,
-    schedule=None,
+    start_date=datetime(2026,8, 6),
+    schedule="0 9 * * *",
     catchup=False,
 ) as dag:
 
