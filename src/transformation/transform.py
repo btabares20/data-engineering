@@ -120,6 +120,8 @@ def normalize_position_type(position_type: str | None):
 
 def transform_data(data: StagingRaw):
     salary_min, salary_max, salary_unit = split_salary_range(data.get("salary_range"))
+    if salary_min is not None and salary_max is not None and salary_min > salary_max:
+        salary_min, salary_max = salary_max, salary_min
     employment_type, work_schedule = normalize_position_type(data.get("position_type"))
     return JobPosting(
         source=data["source"],
