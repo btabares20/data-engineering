@@ -28,16 +28,15 @@ class TradeMeCollector(Collector):
         self.output_dir = Path(f"raw_data/{self.source}")
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
-    def get_resume_page(self, region) -> int:
+    def get_resume_page(self, region) -> int | None:
         today = datetime.now().strftime("%Y%m%d")
         # Already finished today?
         end_files = sorted(
             self.output_dir.glob(f"trademe_jobs_page_{region}_*_{today}_*_END.json")
         )
         if end_files:
-            raise RuntimeError(
-                f"Today's crawl has already completed ({end_files[-1].name})."
-            )
+            logger.warning(f"Today's crawl has already completed ({end_files[-1].name}).")
+            return None
         pattern = re.compile(
             rf"trademe_jobs_page_{region}_(\d+)_{today}_\d{{6}}\.json"
         )
@@ -62,6 +61,8 @@ class TradeMeCollector(Collector):
     def collect_region(self, region)->list[dict]:
         logger.info(f"starting trade_me scraper region: {region}")
         page = self.get_resume_page(region)
+        if page is None:
+            return []
         requests_until_long_sleep = random.randint(3, 6)
         requests_since_long_sleep = 0
         total_jobs = None
@@ -112,7 +113,7 @@ class TradeMeCollector(Collector):
                 }
                 jobs.append(job_details)
                 found_new_job += 1
-            if found_new_job == 0:
+            if found_new_job > 0:
                 page_since_last_new_job+=1
             
             if page_since_last_new_job == 2:

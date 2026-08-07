@@ -6,6 +6,9 @@ from staging.base import Parser
 from utils.common import dotnet_date_to_string
 from sqlalchemy.orm import Session
 from storage.local import LocalStorage
+from utils.logging import get_logger
+
+logger = get_logger(__name__)
 
 
 class JobsGovtParser(Parser):
@@ -80,6 +83,7 @@ class JobsParser:
         jobs = []
         raws = self._get_jobs()
         for raw in raws:
+            logger.info(f"{self.parser.__class__.__name__}: Parsing {raw.job_title}")
             job = self.parser.parse_raw(raw)
             jobs.append(job)
 
