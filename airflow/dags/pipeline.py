@@ -19,6 +19,7 @@ with DAG(
     start_date=datetime(2026,8, 6),
     schedule="0 9 * * *",
     catchup=False,
+    max_active_runs=1,
 ) as dag:
 
     # Collectors
@@ -85,4 +86,3 @@ with DAG(
     # Loaders -> Transform
     jobs_govt_loader >> transform
     trade_me_loader >> transform
-

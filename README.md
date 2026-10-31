@@ -25,3 +25,11 @@ TradeMe checkpoints advance after database writes succeed. Legacy checkpoint fil
 ## Verification
 
 Run `python -m unittest discover -s tests -v`. The tests use isolated functions and mocked clients and database operations. They do not require application dependencies, network access, or a running database.
+
+## Source request limits
+
+Each source client shares a serial request policy within its process. Requests start at least five seconds apart, with jitter, a connect/read timeout of 10/30 seconds, at most two retries, and exponential backoff. Retry-After seconds and HTTP dates are honored; pauses over 120 seconds defer the crawl instead of retrying early. Three failed requests open a five-minute circuit breaker. Airflow allows one active pipeline run. Automatic redirects are disabled so redirects cannot bypass request pacing.
+
+Set JOBS_GOVT_NZ_REQUEST_INTERVAL or TRADE_ME_REQUEST_INTERVAL to a positive number of seconds to adjust pacing according to source limits. Only the read-only Jobs.govt search POST is retried by that client.
+
+Do not run manual crawls alongside the scheduled DAG. The limiter is per process, not distributed across hosts. For multiple crawlers, use a shared rate limiter or Airflow pools per source. Prefer approved APIs, follow source terms and robots rules, use incremental watermarks and conditional requests where supported, cache unchanged detail pages, and schedule occasional reconciliation instead of frequent full backfills.
