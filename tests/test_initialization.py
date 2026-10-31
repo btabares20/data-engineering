@@ -20,6 +20,7 @@ class InitializationTests(unittest.TestCase):
         sqlalchemy.dialects = ModuleType("sqlalchemy.dialects")
         sqlalchemy.dialects.postgresql = ModuleType("sqlalchemy.dialects.postgresql")
         sqlalchemy.dialects.postgresql.UUID = Mock()
+        sqlalchemy.dialects.postgresql.JSONB = Mock()
         for node in imports:
             if isinstance(node, ast.ImportFrom) and node.module == "sqlalchemy":
                 for alias in node.names:

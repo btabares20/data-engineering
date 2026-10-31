@@ -16,6 +16,8 @@ from db.types import StagingRaw, QualityMetrics
 from datetime import date, datetime, timedelta
 from dateutil.parser import parse
 from urllib.parse import urlparse
+from transformation.quality import validate_record
+from transformation.quality_storage import record_rejection, clear_rejection
 from utils.logging import get_logger 
 
 logger = get_logger(__name__)
@@ -145,61 +147,10 @@ def transform_data(data: StagingRaw):
 
     
 
-def quality_checks(data: StagingRaw) -> QualityMetrics:
-    metrics: QualityMetrics = {
-        "required_fields": True,
-        "date_validation": True,
-        "url_validation": True,
-        "value_validation": True,
-    }
-
-    if (
-        data["raw_id"] is None
-        or data["source"] is None
-        or data["external_reference_id"] is None
-        or data["job_title"] is None
-        or not data["job_title"].strip()
-    ):
-        metrics["required_fields"] = False
-
-    today = date.today()
-    date_listed = parse_date(data["date_listed"])
-    closing_date = parse_date(data["closing_date"])
-
-    if data["date_listed"] is not None and date_listed is None:
-        metrics["date_validation"] = False
-
-    if data["closing_date"] is not None and closing_date is None:
-        metrics["date_validation"] = False
-
-    if (
-        date_listed is not None
-        and closing_date is not None
-        and closing_date < date_listed
-    ):
-        metrics["date_validation"] = False
-
-    if (
-        date_listed is not None
-        and date_listed > today + timedelta(days=30)
-    ):
-        metrics["date_validation"] = False
-
-    for field in (
-        "employer",
-        "location",
-        "position_type",
-    ):
-        value = data[field]
-        if value is not None and not value.strip():
-            metrics["value_validation"] = False
-            break
-
-    return metrics 
-
 def transform(db: Session):
     query = select(Staging, Raw.id, Raw.source, Raw.external_reference_id).join(Raw)
     results = db.execute(query)
+    accepted = rejected = 0
     for row in results:
         staging_fields: Staging = row[0]
         raw_id: str = row[1]
@@ -212,13 +163,13 @@ def transform(db: Session):
             },
             source = source,
             external_reference_id= external_reference_id)
+        normalized, issues = validate_record(staging_raw, split_salary_range)
+        if issues:
+            record_rejection(db, staging_raw, issues)
+            rejected += 1
+            continue
         try:
-            metrics = quality_checks(staging_raw)
-            if not all(metrics.values()):
-                logger.info("Skipping row")
-                logger.info(metrics)
-                continue
-            job = transform_data(staging_raw)
+            job = transform_data(normalized)
             values = {
                 c.name: getattr(job, c.name)
                 for c in JobPosting.__table__.columns
@@ -236,7 +187,10 @@ def transform(db: Session):
             )
             with db.begin_nested():
                 db.execute(stmt)
+                clear_rejection(db, raw_id)
+            accepted += 1
         except Exception as e:
             logger.exception(f"Failed row {raw_id}: {e}")
             continue
     db.commit()
+    logger.info("Quality results: accepted=%s rejected=%s", accepted, rejected)
