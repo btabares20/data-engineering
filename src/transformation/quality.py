@@ -5,7 +5,7 @@ import unicodedata
 from urllib.parse import urljoin, urlparse
 from uuid import UUID
 
-from dateutil.parser import parse
+from dateutil.parser import parse, isoparse
 
 
 SOURCE_URLS = {"jobs_govt_nz": "https://jobs.govt.nz/", "trade_me": "https://www.trademe.co.nz/"}
@@ -34,6 +34,8 @@ def normalize_date(value):
         return None
     if re.fullmatch(r"\d{4}-\d{2}-\d{2}", value):
         return date.fromisoformat(value)
+    if re.match(r"\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}", value):
+        return isoparse(value).date()
     return parse(value, dayfirst=True).date()
 
 

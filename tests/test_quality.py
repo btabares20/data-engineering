@@ -45,3 +45,4 @@ class QualityTests(unittest.TestCase):
 
     def test_iso_dates_are_not_day_month_swapped(self):
         self.assertEqual(normalize_date("2026-08-05"), date(2026, 8, 5))
+        self.assertEqual(normalize_date("2026-08-05T10:00:00+12:00"), date(2026, 8, 5))

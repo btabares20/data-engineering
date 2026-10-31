@@ -1,0 +1,313 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Configurable job source version 1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "source_id",
+    "name",
+    "start_url",
+    "user_agent",
+    "mode",
+    "fields"
+  ],
+  "$defs": {
+    "rule": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "selector": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "attribute": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "path": {
+          "type": "array",
+          "maxItems": 12,
+          "items": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer",
+                "minimum": 0
+              }
+            ]
+          }
+        },
+        "constant": {
+          "type": [
+            "string",
+            "number",
+            "null"
+          ]
+        },
+        "derive": {
+          "const": "job_url_hash"
+        }
+      },
+      "oneOf": [
+        {
+          "required": [
+            "selector"
+          ]
+        },
+        {
+          "required": [
+            "path"
+          ]
+        },
+        {
+          "required": [
+            "constant"
+          ]
+        },
+        {
+          "required": [
+            "derive"
+          ]
+        }
+      ]
+    }
+  },
+  "properties": {
+    "version": {
+      "const": 1
+    },
+    "source_id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]{2,63}$"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 100
+    },
+    "start_url": {
+      "type": "string",
+      "format": "uri"
+    },
+    "user_agent": {
+      "type": "string",
+      "pattern": "^[A-Za-z][A-Za-z0-9_-]{2,60}/[0-9.]+$"
+    },
+    "mode": {
+      "enum": [
+        "html",
+        "json",
+        "jsonld"
+      ]
+    },
+    "records_selector": {
+      "type": "string"
+    },
+    "records_path": {
+      "type": "array",
+      "maxItems": 12,
+      "items": {
+        "oneOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "integer",
+            "minimum": 0
+          }
+        ]
+      }
+    },
+    "fields": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "attachment": {
+          "$ref": "#/$defs/rule"
+        },
+        "category": {
+          "$ref": "#/$defs/rule"
+        },
+        "closing_date": {
+          "$ref": "#/$defs/rule"
+        },
+        "date_listed": {
+          "$ref": "#/$defs/rule"
+        },
+        "description_kind": {
+          "$ref": "#/$defs/rule"
+        },
+        "employer": {
+          "$ref": "#/$defs/rule"
+        },
+        "external_reference_id": {
+          "$ref": "#/$defs/rule"
+        },
+        "file_links": {
+          "$ref": "#/$defs/rule"
+        },
+        "job_description": {
+          "$ref": "#/$defs/rule"
+        },
+        "job_title": {
+          "$ref": "#/$defs/rule"
+        },
+        "job_url": {
+          "$ref": "#/$defs/rule"
+        },
+        "location": {
+          "$ref": "#/$defs/rule"
+        },
+        "position_type": {
+          "$ref": "#/$defs/rule"
+        },
+        "salary_range": {
+          "$ref": "#/$defs/rule"
+        },
+        "website": {
+          "$ref": "#/$defs/rule"
+        }
+      }
+    },
+    "detail_fields": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "attachment": {
+          "$ref": "#/$defs/rule"
+        },
+        "category": {
+          "$ref": "#/$defs/rule"
+        },
+        "closing_date": {
+          "$ref": "#/$defs/rule"
+        },
+        "date_listed": {
+          "$ref": "#/$defs/rule"
+        },
+        "description_kind": {
+          "$ref": "#/$defs/rule"
+        },
+        "employer": {
+          "$ref": "#/$defs/rule"
+        },
+        "file_links": {
+          "$ref": "#/$defs/rule"
+        },
+        "job_description": {
+          "$ref": "#/$defs/rule"
+        },
+        "job_title": {
+          "$ref": "#/$defs/rule"
+        },
+        "location": {
+          "$ref": "#/$defs/rule"
+        },
+        "position_type": {
+          "$ref": "#/$defs/rule"
+        },
+        "salary_range": {
+          "$ref": "#/$defs/rule"
+        },
+        "website": {
+          "$ref": "#/$defs/rule"
+        }
+      }
+    },
+    "pagination": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "selector": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "attribute": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "path": {
+          "type": "array",
+          "maxItems": 12,
+          "items": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer",
+                "minimum": 0
+              }
+            ]
+          }
+        }
+      }
+    },
+    "limits": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "interval": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 3600
+        },
+        "max_pages": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        },
+        "max_records": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000
+        },
+        "max_requests": {
+          "type": "integer",
+          "minimum": 2,
+          "maximum": 1000
+        },
+        "max_bytes": {
+          "type": "integer",
+          "minimum": 1024,
+          "maximum": 2097152
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "mode": {
+            "const": "html"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "records_selector"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "mode": {
+            "const": "json"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "records_path"
+        ]
+      }
+    }
+  ]
+}
