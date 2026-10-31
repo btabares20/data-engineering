@@ -32,13 +32,13 @@ class TradeMeCollector(Collector):
         today = datetime.now().strftime("%Y%m%d")
         # Already finished today?
         end_files = sorted(
-            self.output_dir.glob(f"trademe_jobs_page_{region}_*_{today}_*_END.json")
+            self.output_dir.glob(f"trademe_jobs_page_{region}_*_{today}_*_COMMITTED_END.json")
         )
         if end_files:
             logger.warning(f"Today's crawl has already completed ({end_files[-1].name}).")
             return None
         pattern = re.compile(
-            rf"trademe_jobs_page_{region}_(\d+)_{today}_\d{{6}}\.json"
+            rf"trademe_jobs_page_{region}_(\d+)_{today}_\d{{6}}_COMMITTED\.json"
         )
         latest_page = 0
         for file in self.output_dir.glob(f"trademe_jobs_page_{region}_*.json"):
@@ -84,12 +84,8 @@ class TradeMeCollector(Collector):
                     logger.info("Everything has already been downloaded.")
                     break
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = self.output_dir / f"trademe_jobs_page_{region}_{page}_{timestamp}.json"
+            filename = self.output_dir / f"trademe_jobs_page_{region}_{page}_{timestamp}_COMMITTED.json"
 
-            with filename.open("w", encoding="utf-8") as f:
-                json.dump(listings_raw, f, ensure_ascii=False, indent=2)
-
-            logger.info(f"Saved {filename.name}")
             raw_jobs = listings_raw["List"]
             for job in raw_jobs:
                 raw = job
@@ -111,8 +107,15 @@ class TradeMeCollector(Collector):
                     "job_url": raw["CanonicalPath"], 
                     "job_title": raw["Title"] 
                 }
+                self.storage.save(job_details)
                 jobs.append(job_details)
                 found_new_job += 1
+            temporary_filename = filename.with_suffix(".tmp")
+            with temporary_filename.open("w", encoding="utf-8") as f:
+                json.dump(listings_raw, f, ensure_ascii=False, indent=2)
+            temporary_filename.replace(filename)
+            logger.info(f"Saved {filename.name}")
+
             if found_new_job == 0:
                 page_since_last_new_job += 1
             else:
@@ -140,11 +143,8 @@ class TradeMeCollector(Collector):
         return jobs
 
     def collect(self):
-        wellington_jobs = self.collect_region("wellington")
-        auckland_jobs = self.collect_region("auckland")
-        jobs = wellington_jobs + auckland_jobs
-        for job in jobs:
-            self.storage.save(job)
+        self.collect_region("wellington")
+        self.collect_region("auckland")
 
 class JobsGovtCollector(Collector):
     def __init__(self, 

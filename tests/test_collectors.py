@@ -79,3 +79,27 @@ class TradeMeTests(unittest.TestCase):
         self.client.get_listings = get_listings
         self.collector.collect_region("wellington")
         self.assertEqual(self.pages, [1, 2])
+
+    def test_failed_write_retries_uncommitted_page(self):
+        self.storage.save.side_effect = [True, RuntimeError("database unavailable")]
+        with self.assertRaises(RuntimeError):
+            self.collector.collect_region("wellington")
+        self.assertEqual(self.collector.get_resume_page("wellington"), 2)
+        self.storage.save.side_effect = None
+        self.pages.clear()
+        self.collector.collect_region("wellington")
+        self.assertEqual(self.pages, [2, 3, 4, 5])
+        self.assertIsNone(self.collector.get_resume_page("wellington"))
+
+    def test_legacy_files_do_not_skip_unsaved_jobs(self):
+        today = datetime.now().strftime("%Y%m%d")
+        for suffix in (".json", "_END.json"):
+            path = self.collector.output_dir / f"trademe_jobs_page_wellington_5_{today}_120000{suffix}"
+            path.write_text("{}")
+        self.assertEqual(self.collector.get_resume_page("wellington"), 1)
+
+    def test_partial_checkpoint_does_not_advance_resume(self):
+        today = datetime.now().strftime("%Y%m%d")
+        path = self.collector.output_dir / f"trademe_jobs_page_wellington_1_{today}_120000_COMMITTED.tmp"
+        path.write_text("{")
+        self.assertEqual(self.collector.get_resume_page("wellington"), 1)
