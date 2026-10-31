@@ -113,8 +113,10 @@ class TradeMeCollector(Collector):
                 }
                 jobs.append(job_details)
                 found_new_job += 1
-            if found_new_job > 0:
-                page_since_last_new_job+=1
+            if found_new_job == 0:
+                page_since_last_new_job += 1
+            else:
+                page_since_last_new_job = 0
             
             if page_since_last_new_job == 2:
                 logger.info(f"Stopping trademe collector ... no new jobs found since the last {page_since_last_new_job} page")
