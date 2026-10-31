@@ -14,11 +14,11 @@ class StagingRaw(TypedDict):
     location: str | None
     position_type: str | None
     category: str | None
-    date_listed: date | None
+    date_listed: date | str | None
     salary_range: str | None
-    closing_date: date | None
-    attachment: bool
-    file_links: list[str] | None
+    closing_date: date | str | None
+    attachment: str | None
+    file_links: str | None
     website: str | None
 
 class QualityMetrics(TypedDict):
@@ -33,4 +33,3 @@ class StepMetrics:
         self.rows_out = 0
         self.rows_failed = 0
         self.rows_skipped = 0
-

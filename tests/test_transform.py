@@ -42,7 +42,10 @@ class TransformTests(unittest.TestCase):
             "Staging": model,
             "Raw": SimpleNamespace(id=None, source=None, external_reference_id=None),
             "StagingRaw": dict,
-            "quality_checks": lambda data: {"valid": True},
+            "validate_record": lambda data, parser: (data, []),
+            "split_salary_range": Mock(),
+            "record_rejection": Mock(),
+            "clear_rejection": Mock(),
             "transform_data": lambda data: staging,
             "JobPosting": model,
             "insert": Mock(return_value=statement),
@@ -53,4 +56,29 @@ class TransformTests(unittest.TestCase):
         namespace["transform"](db)
         self.assertEqual(events, ["begin", "release", "begin", "rollback", "begin", "release"])
         self.assertEqual(db.execute.call_count, 4)
+        db.commit.assert_called_once()
+
+    def test_invalid_row_is_quarantined_without_curated_insert(self):
+        path = Path(__file__).resolve().parents[1] / "src/transformation/transform.py"
+        tree = ast.parse(path.read_text())
+        function = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == "transform")
+        model = SimpleNamespace(__table__=SimpleNamespace(columns=[]))
+        query = Mock()
+        query.join.return_value = query
+        db = Mock()
+        db.execute.return_value = [(SimpleNamespace(), "raw-id", "source", "external-id")]
+        reject = Mock()
+        transform_data = Mock()
+        namespace = {
+            "Session": object, "select": Mock(return_value=query), "Staging": model,
+            "Raw": SimpleNamespace(id=None, source=None, external_reference_id=None),
+            "StagingRaw": dict, "validate_record": lambda data, parser: (data, ["employer:required"]),
+            "split_salary_range": Mock(), "record_rejection": reject,
+            "transform_data": transform_data, "logger": Mock(),
+        }
+        exec(compile(ast.Module(body=[function], type_ignores=[]), str(path), "exec"), namespace)
+        namespace["transform"](db)
+        reject.assert_called_once()
+        transform_data.assert_not_called()
+        db.execute.assert_called_once()
         db.commit.assert_called_once()

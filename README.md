@@ -33,3 +33,9 @@ Each source client shares a serial request policy within its process. Requests s
 Set JOBS_GOVT_NZ_REQUEST_INTERVAL or TRADE_ME_REQUEST_INTERVAL to a positive number of seconds to adjust pacing according to source limits. Only the read-only Jobs.govt search POST is retried by that client.
 
 Do not run manual crawls alongside the scheduled DAG. The limiter is per process, not distributed across hosts. For multiple crawlers, use a shared rate limiter or Airflow pools per source. Prefer approved APIs, follow source terms and robots rules, use incremental watermarks and conditional requests where supported, cache unchanged detail pages, and schedule occasional reconciliation instead of frequent full backfills.
+
+## Data quality
+
+Run the explicit schema initializer again before using quality checks to create rejected_records. Transform validates required identities, employer and title, string lengths, New Zealand date ordering, HTTP URLs, listing/closing-date ordering, future listing dates, and salary bounds. It normalizes text, source-relative URLs, and date objects before writing curated rows.
+
+Validation failures are stored in rejected_records with the raw record ID, issue codes, and staging payload. Raw and staging data remain available for correction and replay. Reprocessing a corrected row removes its rejection after a successful curated upsert. Source/reference and staging/raw uniqueness remain enforced by database constraints. The transform logs accepted and rejected counts.

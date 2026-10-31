@@ -1,5 +1,5 @@
 import uuid
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy import BigInteger, Boolean, Column, Date, Float, ForeignKey, Integer, Numeric, String, DateTime, UniqueConstraint, func
 from sqlalchemy.orm import relationship
 from db.engine import Base
@@ -127,3 +127,13 @@ class RawV2(Base):
         ),
     )
 
+
+class RejectedRecord(Base):
+    __tablename__ = "rejected_records"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    raw_id = Column(UUID(as_uuid=True), ForeignKey("raw.id"), nullable=False, index=True)
+    stage = Column(String(100), nullable=False)
+    issues = Column(JSONB, nullable=False)
+    payload = Column(JSONB, nullable=False)
+    created_at = Column(DateTime, server_default=func.now(), nullable=False)
+    __table_args__ = (UniqueConstraint("raw_id", "stage", name="uq_rejected_raw_stage"),)
