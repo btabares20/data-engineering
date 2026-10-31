@@ -24,7 +24,7 @@ TradeMe checkpoints advance after database writes succeed. Legacy checkpoint fil
 
 ## Verification
 
-Run `python -m unittest discover -s tests -v`. The tests use isolated functions and mocked clients and database operations. They do not require application dependencies, network access, or a running database.
+Run `python -m unittest discover -s tests -v`. The tests use isolated functions and mocked clients and database operations. They require python-dateutil and use mocked clients and database operations without network access or a running database.
 
 ## Source request limits
 
