@@ -234,7 +234,8 @@ def transform(db: Session):
                 }
                 | {"updated_at": func.now()}
             )
-            db.execute(stmt)
+            with db.begin_nested():
+                db.execute(stmt)
         except Exception as e:
             logger.exception(f"Failed row {raw_id}: {e}")
             continue
