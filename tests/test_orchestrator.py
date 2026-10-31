@@ -3,6 +3,7 @@ import asyncio
 from contextlib import nullcontext
 from pathlib import Path
 from types import SimpleNamespace
+from uuid import uuid4
 import unittest
 from unittest.mock import Mock
 
@@ -15,12 +16,13 @@ class OrchestratorTests(unittest.TestCase):
         parser = Mock()
         transform = Mock()
 
-        async def to_thread(function):
-            return function()
+        async def to_thread(function, *args):
+            return function(*args)
 
         namespace = {
             "asyncio": SimpleNamespace(gather=asyncio.gather, to_thread=to_thread),
             "db_context": nullcontext,
+            "uuid4": uuid4,
             "logger": Mock(),
             "run_jobs_govt_collector": Mock(side_effect=RuntimeError("collection failed")),
             "run_trade_me_collector": Mock(),

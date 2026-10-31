@@ -30,6 +30,7 @@ x-airflow-common:
   environment:
     &airflow-common-env
     PYTHONPATH: /opt/project/src
+    PIPELINE_DATA_DIR: /opt/airflow/data
     AIRFLOW__CORE__EXECUTOR: CeleryExecutor
     AIRFLOW__CORE__AUTH_MANAGER: airflow.providers.fab.auth_manager.fab_auth_manager.FabAuthManager
     AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
@@ -51,6 +52,7 @@ x-airflow-common:
     - ${AIRFLOW_PROJ_DIR:-.}/plugins:/opt/airflow/plugins
     - ./src:/opt/project/src
     - ./src/raw_data:/opt/airflow/raw_data
+    - ./data:/opt/airflow/data
   user: "${AIRFLOW_UID:-50000}:0"
   networks:
     - shared
@@ -231,7 +233,7 @@ services:
         echo
         echo "Creating missing opt dirs if missing:"
         echo
-        mkdir -v -p /opt/airflow/{logs,dags,plugins,config}
+        mkdir -v -p /opt/airflow/{logs,dags,plugins,config,data}
         echo
         echo "Airflow version:"
         /entrypoint airflow version

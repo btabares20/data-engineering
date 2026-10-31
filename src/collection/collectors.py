@@ -12,6 +12,7 @@ from collection.parsers import JobsGovtRawParser, TradeMeRawParser
 from storage.postgres import PostgreSQLRawStorage
 from collection.base import Collector
 from utils.logging import get_logger
+from storage.paths import artifact_directory
 
 logger = get_logger(__name__)
 
@@ -20,12 +21,13 @@ class TradeMeCollector(Collector):
         client: TradeMeClient, 
         parser: TradeMeRawParser, 
         storage: PostgreSQLRawStorage,
+        run_id=None,
     ) -> None:
         self.source = "trade_me"
         self.client = client
         self.parser = parser 
         self.storage = storage
-        self.output_dir = Path(f"raw_data/{self.source}")
+        self.output_dir = artifact_directory("raw", self.source, run_id or datetime.now().strftime("%Y%m%d"))
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
     def get_resume_page(self, region) -> int | None:

@@ -50,7 +50,7 @@ def jobs_govt_collector(db: Session)->Collector:
     return collector 
 
 
-def trade_me_collector(db: Session)->Collector:
+def trade_me_collector(db: Session, run_id)->Collector:
     url = "https://api.trademe.co.nz/v1/search/jobs.json"
     source = "trade_me"
     headers = {
@@ -80,6 +80,7 @@ def trade_me_collector(db: Session)->Collector:
         "return_seo_details": "true",
     }
     collector = TradeMeCollector(
+        run_id=run_id,
         client = TradeMeClient(
             url=url,
             headers=headers,

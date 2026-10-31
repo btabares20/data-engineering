@@ -3,12 +3,15 @@ from datetime import datetime
 import json
 import math
 from pathlib import Path
+import sys
 import random
 import re
 import tempfile
 from types import SimpleNamespace
 import unittest
 from unittest.mock import Mock
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+from storage.paths import artifact_directory
 
 
 def collector_types():
@@ -18,6 +21,7 @@ def collector_types():
     namespace = dict(globals())
     namespace.update(
         Collector=object,
+        artifact_directory=artifact_directory,
         TradeMeClient=object,
         TradeMeRawParser=object,
         JobsGovtClient=object,
@@ -134,4 +138,3 @@ class JobsGovtTests(unittest.TestCase):
         collector.collect()
         client.get_listing_page.assert_called_once_with("0")
         storage.save.assert_not_called()
-
