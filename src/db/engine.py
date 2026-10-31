@@ -14,4 +14,5 @@ def get_db():
         db.close()
 
 engine=create_engine(POSTGRES_URL)
+SessionLocal.configure(bind=engine)
 db_context = contextmanager(get_db)
