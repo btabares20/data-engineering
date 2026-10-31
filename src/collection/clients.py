@@ -1,4 +1,4 @@
-from urllib.parse import urljoin
+from urllib.parse import urljoin, quote
 import requests
 from collection.request_policy import source_policy
 
@@ -58,3 +58,10 @@ class TradeMeClient:
         )
         response.raise_for_status()
         return response.json()
+
+    def get_job_details(self, listing_id):
+        url = "https://api.trademe.co.nz/v1/Listings/" + quote(str(listing_id), safe="") + ".json"
+        return self.policy.request(
+            self.session, "GET", url, headers=self.headers,
+            retry_exceptions=(requests.exceptions.Timeout, requests.exceptions.ConnectionError),
+        ).json()

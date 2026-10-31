@@ -20,6 +20,18 @@ class PostgreSQLRawStorage[ModelT]:
         self.save_model = save_model
         self.conflict_columns = conflict_columns
 
+    def contains(self, source, external_reference_id):
+        return self.session.query(self.save_model.id).filter(
+            self.save_model.source == source,
+            self.save_model.external_reference_id == str(external_reference_id),
+        ).first() is not None
+
+    def contains_url(self, source, job_url):
+        return self.session.query(self.save_model.id).filter(
+            self.save_model.source == source,
+            self.save_model.job_url == job_url,
+        ).first() is not None
+
     def save(self, job: dict) -> bool:
         stmt = insert(self.save_model).values(**job)
         stmt = stmt.on_conflict_do_nothing(

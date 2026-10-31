@@ -31,3 +31,8 @@ class ClientTests(unittest.TestCase):
         client = self.module.TradeMeClient("https://api.trademe.co.nz/jobs", {}, {"canonical_path": "/jobs/auckland"})
         client.get_listings(1, "wellington")
         self.assertEqual(self.policy.request.call_args.kwargs["params"]["canonical_path"], "/jobs/wellington")
+
+    def test_trademe_details_use_the_paced_policy(self):
+        client = self.module.TradeMeClient("https://api.trademe.co.nz/jobs", {}, {})
+        client.get_job_details("123")
+        self.assertEqual(self.policy.request.call_args.args[2], "https://api.trademe.co.nz/v1/Listings/123.json")
