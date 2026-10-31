@@ -163,7 +163,6 @@ class JobsGovtCollector(Collector):
         next_page = 1
         jobs = []
         while True:
-            found_new_job = False
             logger.info(f"Fetching jobs from page # {next_page}")
             if self.total_jobs and int(page) >= self.total_jobs:
                 break
@@ -186,9 +185,8 @@ class JobsGovtCollector(Collector):
                     "job_url": listing["job_url"],
                     "job_title": listing["job_title_text"]
                 }
-                if self.storage.save(job):
-                    found_new_job = True
+                self.storage.save(job)
 
-            if not found_new_job:
-                logger.info("No New jobs found... breaking the cycle")
+            if not listings:
+                logger.info("No listings found... breaking the cycle")
                 break

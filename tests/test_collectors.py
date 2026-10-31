@@ -103,3 +103,35 @@ class TradeMeTests(unittest.TestCase):
         path = self.collector.output_dir / f"trademe_jobs_page_wellington_1_{today}_120000_COMMITTED.tmp"
         path.write_text("{")
         self.assertEqual(self.collector.get_resume_page("wellington"), 1)
+
+
+class JobsGovtTests(unittest.TestCase):
+    def test_duplicate_page_does_not_hide_later_unseen_jobs(self):
+        client = Mock()
+        client.get_listing_page.side_effect = ["first page", "second page"]
+        client.get_job_page.return_value = "details"
+        parser = Mock()
+        parser.parse_job_count.return_value = 40
+        parser.parse_listings.side_effect = [
+            [{"job_url": "/known", "job_title_text": "Known"}],
+            [{"job_url": "/new", "job_title_text": "New"}],
+        ]
+        parser.parse_details.return_value = {"external_reference_id": "reference", "raw": "details"}
+        storage = Mock()
+        storage.save.side_effect = [False, True]
+        collector = collector_types()["JobsGovtCollector"](client, parser, storage)
+        collector.collect()
+        self.assertEqual(client.get_listing_page.call_count, 2)
+        self.assertEqual(storage.save.call_count, 2)
+
+    def test_empty_results_end_pagination_without_a_count(self):
+        client = Mock()
+        parser = Mock()
+        parser.parse_job_count.return_value = 0
+        parser.parse_listings.return_value = []
+        storage = Mock()
+        collector = collector_types()["JobsGovtCollector"](client, parser, storage)
+        collector.collect()
+        client.get_listing_page.assert_called_once_with("0")
+        storage.save.assert_not_called()
+
