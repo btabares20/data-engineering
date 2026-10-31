@@ -22,6 +22,7 @@ class LoaderTests(unittest.TestCase):
         function = next(node for node in tree.body if isinstance(node, ast.FunctionDef))
         self.statement = Mock()
         self.statement.values.return_value = self.statement
+        self.statement.excluded = {"job_title": "excluded title"}
         self.statement.on_conflict_do_update.return_value = self.statement
         model = SimpleNamespace(__table__=SimpleNamespace(columns=[SimpleNamespace(name=name) for name in ("raw_id", "job_title")]))
         namespace = {
