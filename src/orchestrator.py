@@ -59,6 +59,7 @@ async def main():
             await asyncio.to_thread(run_transform)
         except Exception as e:
             logger.exception(str(e))
+            raise
 
     logger.info("Pipeline finished...")
 

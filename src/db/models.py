@@ -2,7 +2,7 @@ import uuid
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy import BigInteger, Boolean, Column, Date, Float, ForeignKey, Integer, Numeric, String, DateTime, UniqueConstraint, func
 from sqlalchemy.orm import relationship
-from db.engine import Base, SessionLocal, engine
+from db.engine import Base
 
 class PipelineRuns(Base):
     __tablename__ = "pipeline_runs"
@@ -127,6 +127,3 @@ class RawV2(Base):
         ),
     )
 
-
-SessionLocal.configure(bind=engine)
-Base.metadata.create_all(bind=engine)
