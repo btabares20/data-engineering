@@ -1,6 +1,6 @@
 import uuid
 from sqlalchemy.dialects.postgresql import UUID, JSONB
-from sqlalchemy import BigInteger, Boolean, Column, Date, Float, ForeignKey, Integer, Numeric, String, DateTime, UniqueConstraint, func
+from sqlalchemy import BigInteger, Boolean, Column, Date, Float, ForeignKey, Integer, Numeric, String, DateTime, UniqueConstraint, Text, text, func
 from sqlalchemy.orm import relationship
 from db.engine import Base
 
@@ -33,6 +33,12 @@ class PipelineSteps(Base):
 
 class JobPosting(Base):
     __tablename__ = "job_postings"
+    job_description = Column(Text)
+    description_kind = Column(String(32))
+    skills_mentioned = Column(JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb"))
+    skills_required = Column(JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb"))
+    skills_evidence = Column(JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb"))
+    skills_taxonomy_version = Column(String(32))
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     source = Column(String(100), nullable=False)
     external_reference_id = Column(String(255), nullable=False)
@@ -63,6 +69,8 @@ class JobPosting(Base):
 
 class Staging(Base):
     __tablename__ = "staging"
+    job_description = Column(Text)
+    description_kind = Column(String(32))
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     raw_id = Column(UUID(as_uuid=True), ForeignKey("raw.id"), nullable=False)

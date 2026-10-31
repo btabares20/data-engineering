@@ -43,7 +43,7 @@ class InitializationTests(unittest.TestCase):
         function = next(node for node in tree.body if isinstance(node, ast.FunctionDef))
         base = SimpleNamespace(metadata=Mock())
         engine = object()
-        namespace = {"Base": base, "engine": engine}
+        namespace = {"Base": base, "engine": engine, "upgrade_job_descriptions": Mock()}
         exec(compile(ast.Module(body=[function], type_ignores=[]), str(path), "exec"), namespace)
         namespace["initialize"]()
         base.metadata.create_all.assert_called_once_with(bind=engine)

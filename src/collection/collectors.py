@@ -94,6 +94,13 @@ class TradeMeCollector(Collector):
                 if raw is None:
                     continue
 
+                found_new_job += 1
+                if self.storage.contains(self.source, raw["ListingId"]):
+                    continue
+                if not any(raw.get(key) for key in ("DescriptionBody", "Body", "Description")):
+                    details = self.client.get_job_details(raw["ListingId"])
+                    raw["DescriptionBody"] = details.get("Body")
+                    raw["ListingDetails"] = details
                 raw_category = raw["Category"]
                 category_name = self.parser._get_category_name(
                     raw_category,
@@ -111,7 +118,6 @@ class TradeMeCollector(Collector):
                 }
                 self.storage.save(job_details)
                 jobs.append(job_details)
-                found_new_job += 1
             temporary_filename = filename.with_suffix(".tmp")
             with temporary_filename.open("w", encoding="utf-8") as f:
                 json.dump(listings_raw, f, ensure_ascii=False, indent=2)
@@ -177,6 +183,8 @@ class JobsGovtCollector(Collector):
 
             listings = self.parser.parse_listings(main_page_html)
             for listing in listings:
+                if self.storage.contains_url(self.source, listing["job_url"]):
+                    continue
                 listing_page = self.client.get_job_page(listing["job_url"])
                 listing_details = self.parser.parse_details(listing_page)
                 if listing_details is None:

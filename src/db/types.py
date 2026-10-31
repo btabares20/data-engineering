@@ -8,6 +8,8 @@ class StagingRaw(TypedDict):
     raw_id: str 
     source: str
     external_reference_id: str
+    job_description: str | None
+    description_kind: str | None
     job_title: str
     job_url: str
     employer: str

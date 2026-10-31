@@ -39,7 +39,8 @@ class TradeMeTests(unittest.TestCase):
         self.addCleanup(self.directory.cleanup)
         self.pages = []
         self.storage = Mock()
-        self.client = SimpleNamespace(base_params={"rows": 1}, get_listings=self.get_listings)
+        self.storage.contains.return_value = False
+        self.client = SimpleNamespace(base_params={"rows": 1}, get_listings=self.get_listings, get_job_details=Mock(return_value={"Body": "Python required"}))
         parser = SimpleNamespace(parse_job_count=lambda data: 5, _get_category_name=lambda *args: "IT")
         self.collector = collector_types()["TradeMeCollector"](self.client, parser, self.storage)
         self.collector.output_dir = Path(self.directory.name)
@@ -108,6 +109,19 @@ class TradeMeTests(unittest.TestCase):
         path.write_text("{")
         self.assertEqual(self.collector.get_resume_page("wellington"), 1)
 
+    def test_known_listings_skip_details_without_stopping_pagination(self):
+        self.storage.contains.return_value = True
+        self.collector.collect_region("wellington")
+        self.assertEqual(self.pages, [1, 2, 3, 4, 5])
+        self.client.get_job_details.assert_not_called()
+        self.storage.save.assert_not_called()
+
+    def test_new_listing_details_are_retained_in_raw_storage(self):
+        self.collector.collect_region("wellington")
+        payload = json.loads(self.storage.save.call_args.args[0]["raw"])
+        self.assertEqual(payload["DescriptionBody"], "Python required")
+        self.assertEqual(self.client.get_job_details.call_count, 5)
+
 
 class JobsGovtTests(unittest.TestCase):
     def test_duplicate_page_does_not_hide_later_unseen_jobs(self):
@@ -122,6 +136,7 @@ class JobsGovtTests(unittest.TestCase):
         ]
         parser.parse_details.return_value = {"external_reference_id": "reference", "raw": "details"}
         storage = Mock()
+        storage.contains_url.return_value = False
         storage.save.side_effect = [False, True]
         collector = collector_types()["JobsGovtCollector"](client, parser, storage)
         collector.collect()
@@ -134,6 +149,7 @@ class JobsGovtTests(unittest.TestCase):
         parser.parse_job_count.return_value = 0
         parser.parse_listings.return_value = []
         storage = Mock()
+        storage.contains_url.return_value = False
         collector = collector_types()["JobsGovtCollector"](client, parser, storage)
         collector.collect()
         client.get_listing_page.assert_called_once_with("0")

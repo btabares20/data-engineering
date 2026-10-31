@@ -14,7 +14,7 @@ Run `docker compose up airflow-init`, then initialize the application schema exp
 docker compose run --rm airflow-cli python -m db.initialize
 ```
 
-Run this command before enabling the DAG or running the standalone pipeline. It creates missing tables without connecting to the database during model imports. It does not migrate existing table definitions.
+Run this command before enabling the DAG or running the standalone pipeline. It creates missing tables without connecting to the database during model imports. It also applies the additive job-description column migration. Other schema changes require their own migrations.
 
 Start Airflow with `docker compose up -d` and enable the pipeline DAG. The DAG directory is airflow/dags.
 
@@ -47,3 +47,20 @@ The database separates immutable source payloads (raw), source-shaped parsed val
 Intermediate files live under PIPELINE_DATA_DIR (default data): raw/<source>/<run-key> for TradeMe page checkpoints and staging/<source>/<run-key>/jobs.jsonl for parsed records. A hash of the exact run ID creates a filesystem-safe run key. Airflow passes its run ID to collectors, parsers, and loaders; the standalone runner generates one UUID for the whole run. Retries reuse their run directory. Separate runs cannot overwrite each other's staging files.
 
 Files are written atomically. Each staging file has a manifest containing its source, run ID, row count, and SHA-256 checksum. Loaders verify the manifest and each raw record's source before staging writes. Empty runs have an explicit zero-row manifest. Legacy files in the working directory are no longer loaded. Docker mounts ./data so all workers on this Compose host share artifacts; workers on multiple hosts need shared storage mounted at the same path. Retain raw/rejected records according to your retention policy and remove old run directories after successful runs.
+
+## Job descriptions and skills
+
+Run `PYTHONPATH=src python -m db.initialize` before this version, or `PYTHONPATH=src python -m db.migrations` to upgrade an already initialized database. The migration adds description and skill columns with ALTER TABLE ADD COLUMN IF NOT EXISTS in one transaction. The Docker equivalent is `docker compose run --rm airflow-cli python -m db.initialize`.
+
+Both source parsers store job_description as plain text while retaining section breaks and stripping script/style content. description_kind distinguishes full descriptions, summaries, and missing text. New TradeMe listings fetch their detail Body through the paced request policy; existing listings reuse saved raw data. Jobs.govt skips detail downloads for known listing URLs. Existing full staging descriptions survive offline replay of older summary-only raw records.
+
+Curated jobs include skills_mentioned, skills_required, skills_evidence, and skills_taxonomy_version. The versioned dictionary covers common technology, office, interpersonal, healthcare, and trade skills. Matching uses word boundaries and canonical aliases. Required skills need explicit requirement wording or a recognized requirements heading. Preferred and negated wording do not become required skills. Evidence includes the matched text and classification for review. Mixed or ambiguous wording is treated conservatively. These are rule-based signals, not an exhaustive interpretation of every job requirement; unknown skills are not inferred, and an empty list does not prove that no skills are required. The full text remains available for auditing and future extraction.
+
+To populate existing jobs without calling source servers, pause scheduled crawls and run:
+
+```sh
+PYTHONPATH=src python -m enrichment.backfill --source jobs_govt_nz
+PYTHONPATH=src python -m enrichment.backfill --source trade_me
+```
+
+The backfill reparses stored raw records through isolated staging artifacts, loads them, and re-runs quality checks and skills extraction. Malformed records are quarantined at the parse stage. Raw payloads are preserved. Older TradeMe records may only contain summaries. Opt into paced detail requests for missing full descriptions with `--source trade_me --fetch-missing`; saved full descriptions are reused. Verify the detail endpoint's availability and permissions for your source account before enabling it. No live source integration was exercised in this change.

@@ -16,6 +16,7 @@ from db.types import StagingRaw, QualityMetrics
 from datetime import date, datetime, timedelta
 from dateutil.parser import parse
 from urllib.parse import urlparse
+from enrichment.skills import extract_skills
 from transformation.quality import validate_record
 from transformation.quality_storage import record_rejection, clear_rejection
 from utils.logging import get_logger 
@@ -126,6 +127,9 @@ def transform_data(data: StagingRaw):
         salary_min, salary_max = salary_max, salary_min
     employment_type, work_schedule = normalize_position_type(data.get("position_type"))
     return JobPosting(
+        job_description=data.get("job_description"),
+        description_kind=data.get("description_kind") or "missing",
+        **extract_skills(data.get("job_description")),
         source=data["source"],
         external_reference_id=data["external_reference_id"],
         title=clean_string(data["job_title"]),
