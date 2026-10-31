@@ -4,14 +4,15 @@ import os
 from pathlib import Path
 
 from storage.local import LocalStorage
+from sources.contracts import source_id
 
 
-SOURCES = {"trade_me", "jobs_govt_nz"}
 LAYERS = {"raw", "staging", "curated", "rejected"}
 
 
 def artifact_directory(layer, source, run_id):
-    if layer not in LAYERS or source not in SOURCES or not run_id:
+    source_id(source)
+    if layer not in LAYERS or not run_id:
         raise ValueError("A known layer, source, and nonempty run ID are required")
     run_key = hashlib.sha256(str(run_id).encode()).hexdigest()[:24]
     return Path(os.getenv("PIPELINE_DATA_DIR", "data")) / layer / source / run_key

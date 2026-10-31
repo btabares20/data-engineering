@@ -11,6 +11,7 @@ from orchestrator import (
     run_jobs_govt_loader,
     run_trade_me_loader,
     run_transform,
+    run_configured_sources,
 )
 
 
@@ -61,6 +62,12 @@ with DAG(
         op_kwargs={"run_id": "{{ run_id }}"},
     )
 
+    configured_sources = PythonOperator(
+        task_id="configured_sources",
+        python_callable=run_configured_sources,
+        op_kwargs={"run_id": "{{ run_id }}"},
+    )
+
     # Transform
     transform = PythonOperator(
         task_id="transform",
@@ -92,3 +99,4 @@ with DAG(
     # Loaders -> Transform
     jobs_govt_loader >> transform
     trade_me_loader >> transform
+    configured_sources >> transform

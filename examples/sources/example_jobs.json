@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "source_id": "example_jobs",
+  "name": "Example jobs",
+  "start_url": "https://example.com/jobs",
+  "user_agent": "JobResearchPipeline/1.0",
+  "mode": "html",
+  "records_selector": "article.job",
+  "fields": {
+    "external_reference_id": {"selector": "$", "attribute": "data-id"},
+    "job_title": {"selector": "h2"},
+    "employer": {"selector": ".company"},
+    "job_url": {"selector": "a[href]", "attribute": "href"}
+  },
+  "detail_fields": {
+    "job_description": {"selector": "main .description", "attribute": "html"}
+  },
+  "pagination": {"selector": "a.next[href]", "attribute": "href"},
+  "limits": {
+    "interval": 5,
+    "max_pages": 5,
+    "max_records": 100,
+    "max_requests": 120,
+    "max_bytes": 1048576
+  }
+}

@@ -39,15 +39,18 @@ class RequestPolicy:
             delay = 2 ** (attempt + 1)
         return max(self.interval, delay) + self.jitter()
 
-    def request(self, session, method, url, retry_exceptions=(), **kwargs):
+    def request(self, session, method, url, retry_exceptions=(), acceptable_statuses=(), before_attempt=None, **kwargs):
         with self.lock:
             if self.clock() < self.blocked_until:
                 raise RuntimeError("Source cooldown is active; retry on a later pipeline run")
+            response = None
             try:
                 for attempt in range(self.retries + 1):
                     delay = self.next_request - self.clock()
                     if delay > 0:
                         self.sleep(delay)
+                    if before_attempt is not None:
+                        before_attempt()
                     self.next_request = self.clock() + self.interval + self.jitter()
                     response = None
                     try:
@@ -59,7 +62,8 @@ class RequestPolicy:
                         if 300 <= response.status_code < 400:
                             raise RuntimeError("Source redirected the request; update the configured endpoint")
                         if response.status_code not in (429, 500, 502, 503, 504):
-                            response.raise_for_status()
+                            if response.status_code not in acceptable_statuses:
+                                response.raise_for_status()
                             self.failures = 0
                             return response
                         if attempt == self.retries:
@@ -73,6 +77,8 @@ class RequestPolicy:
                         raise RuntimeError("Source requested a long pause; deferring this crawl")
                     self.next_request = max(self.next_request, self.clock() + delay)
             except Exception:
+                if response is not None:
+                    response.close()
                 self.failures += 1
                 if self.failures >= self.failure_limit:
                     self.blocked_until = max(self.blocked_until, self.clock() + self.cooldown)

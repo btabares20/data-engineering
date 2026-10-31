@@ -64,3 +64,9 @@ PYTHONPATH=src python -m enrichment.backfill --source trade_me
 ```
 
 The backfill reparses stored raw records through isolated staging artifacts, loads them, and re-runs quality checks and skills extraction. Malformed records are quarantined at the parse stage. Raw payloads are preserved. Older TradeMe records may only contain summaries. Opt into paced detail requests for missing full descriptions with `--source trade_me --fetch-missing`; saved full descriptions are reused. Verify the detail endpoint's availability and permissions for your source account before enabling it. No live source integration was exercised in this change.
+
+## Configurable sources
+
+Add sources without new Python collectors using `PYTHONPATH=src python -m sources inspect SOURCE_ID URL`. The onboarding flow discovers candidate elements or structured JobPosting data, recommends a draft mapping, previews records against the common job schema, and requires explicit human acceptance of the exact reviewed configuration hash. A command-line review screen and JSON contract support a future LLM discovery harness.
+
+robots.txt is checked before sampling, acceptance, and collection. Disallowed or unverifiable policies block activation. Reports warn that websites may prohibit scraping through their terms even when robots.txt allows it. Dynamic sources reuse request pacing, raw/staging/curated/rejected layers, quality checks, and skill extraction. See [the source-engine guide](docs/configurable-sources.md) for commands, limitations, approval behavior, and harness integration.

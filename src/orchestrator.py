@@ -6,6 +6,7 @@ from db.engine import db_context
 from staging.composer import jobs_govt_nz_parser, trade_me_parser
 from transformation.loaders import loader
 from transformation.transform import transform
+from sources.runtime import run_configured_sources
 from utils.logging import get_logger 
 
 logger = get_logger(__name__)
@@ -58,6 +59,8 @@ async def main():
                 asyncio.to_thread(run_jobs_govt_loader, run_id),
                 asyncio.to_thread(run_trade_me_loader, run_id)
             )
+            logger.info("Running accepted configurable sources...")
+            await asyncio.to_thread(run_configured_sources, run_id)
             logger.info("Starting data quality check and transform...")
             await asyncio.to_thread(run_transform)
         except Exception as e:
