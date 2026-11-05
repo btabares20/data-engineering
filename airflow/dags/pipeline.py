@@ -26,33 +26,39 @@ with DAG(
     jobs_govt_collector = PythonOperator(
         task_id="jobs_govt_collector",
         python_callable=run_jobs_govt_collector,
+        op_kwargs={"run_id": "{{ run_id }}"},
     )
 
     trade_me_collector = PythonOperator(
         task_id="trade_me_collector",
         python_callable=run_trade_me_collector,
+        op_kwargs={"run_id": "{{ run_id }}"},
     )
 
     # Parsers
     jobs_govt_parser = PythonOperator(
         task_id="jobs_govt_parser",
         python_callable=run_jobs_govt_parser,
+        op_kwargs={"run_id": "{{ run_id }}"},
     )
 
     trade_me_parser = PythonOperator(
         task_id="trade_me_parser",
         python_callable=run_trade_me_parser,
+        op_kwargs={"run_id": "{{ run_id }}"},
     )
 
     # Loaders
     jobs_govt_loader = PythonOperator(
         task_id="jobs_govt_loader",
         python_callable=run_jobs_govt_loader,
+        op_kwargs={"run_id": "{{ run_id }}"},
     )
 
     trade_me_loader = PythonOperator(
         task_id="trade_me_loader",
         python_callable=run_trade_me_loader,
+        op_kwargs={"run_id": "{{ run_id }}"},
     )
 
     # Transform

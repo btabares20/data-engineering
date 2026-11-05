@@ -39,3 +39,11 @@ Do not run manual crawls alongside the scheduled DAG. The limiter is per process
 Run the explicit schema initializer again before using quality checks to create rejected_records. Transform validates required identities, employer and title, string lengths, New Zealand date ordering, HTTP URLs, listing/closing-date ordering, future listing dates, and salary bounds. It normalizes text, source-relative URLs, and date objects before writing curated rows.
 
 Validation failures are stored in rejected_records with the raw record ID, issue codes, and staging payload. Raw and staging data remain available for correction and replay. Reprocessing a corrected row removes its rejection after a successful curated upsert. Source/reference and staging/raw uniqueness remain enforced by database constraints. The transform logs accepted and rejected counts.
+
+## Pipeline data layers
+
+The database separates immutable source payloads (raw), source-shaped parsed values (staging), validated normalized jobs (job_postings, the curated layer), and quality failures with issue codes (rejected_records). Curated records retain source/reference identity, and staging/rejections link back to raw IDs. Existing database uniqueness constraints enforce these boundaries.
+
+Intermediate files live under PIPELINE_DATA_DIR (default data): raw/<source>/<run-key> for TradeMe page checkpoints and staging/<source>/<run-key>/jobs.jsonl for parsed records. A hash of the exact run ID creates a filesystem-safe run key. Airflow passes its run ID to collectors, parsers, and loaders; the standalone runner generates one UUID for the whole run. Retries reuse their run directory. Separate runs cannot overwrite each other's staging files.
+
+Files are written atomically. Each staging file has a manifest containing its source, run ID, row count, and SHA-256 checksum. Loaders verify the manifest and each raw record's source before staging writes. Empty runs have an explicit zero-row manifest. Legacy files in the working directory are no longer loaded. Docker mounts ./data so all workers on this Compose host share artifacts; workers on multiple hosts need shared storage mounted at the same path. Retain raw/rejected records according to your retention policy and remove old run directories after successful runs.

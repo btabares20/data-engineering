@@ -6,6 +6,7 @@ from staging.base import Parser
 from utils.common import dotnet_date_to_string
 from sqlalchemy.orm import Session
 from storage.local import LocalStorage
+from storage.paths import staging_file, write_manifest
 from utils.logging import get_logger
 
 logger = get_logger(__name__)
@@ -79,7 +80,7 @@ class JobsParser:
         raws = self.db.query(Raw).filter(Raw.parsed == False, Raw.source == self.source).all()
         return raws
 
-    def parse(self):
+    def parse(self, run_id):
         jobs = []
         raws = self._get_jobs()
         for raw in raws:
@@ -87,4 +88,7 @@ class JobsParser:
             job = self.parser.parse_raw(raw)
             jobs.append(job)
 
-        self.storage.save(f"{self.source}_parsed.json", jobs)
+        path = staging_file(self.source, run_id)
+        self.storage.save(path, jobs)
+        write_manifest(path, self.source, run_id, len(jobs))
+        return path
